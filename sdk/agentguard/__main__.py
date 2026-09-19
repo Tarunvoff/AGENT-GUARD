@@ -367,10 +367,179 @@ def main():
         else:
             print("Usage: python -m agentguard attack [list|run|adaptive|replay|regressions|lineage|explain|report]")
             sys.exit(1)
+    elif cmd == "forensic":
+        _cli_forensic(args)
     else:
         print(f"Unknown command: {' '.join(args)}")
         sys.exit(1)
 
 
+# ---------------------------------------------------------------------------
+# Forensic CLI — Phase 6.5
+# ---------------------------------------------------------------------------
+
+def _build_forensic_service():
+    """Build a minimal ForensicService for CLI use (empty guard instance)."""
+    from agentguard.forensics.service import ForensicService
+    guard = AgentGuard()
+    return ForensicService(guard)
+
+
+def _cli_forensic(args: List[str]) -> None:
+    """python -m agentguard forensic <subcommand> ..."""
+    if len(args) < 2:
+        print("Usage: python -m agentguard forensic <subcommand> [options]")
+        print("\nSubcommands:")
+        print("  agent <agent_id>              Full forensic access profile for an agent")
+        print("  resource <resource_name>       Resource access profile")
+        print("  matrix                         Full access matrix (agents × resources)")
+        print("  delegation <agent_id>          Delegation chain for an agent")
+        print("  attempts <agent_id>            Access attempts by agent")
+        print("  actual-access <agent_id>       Confirmed executions by agent")
+        print("  reachable <agent_id>           Reachable resources analysis")
+        print("  snapshot                       Capture current security-state snapshot")
+        print("  diff --before <id> --after <id>  Compare two snapshots")
+        print("  attack <attack_id>             Attack forensic report")
+        print("  why <agent_id> <tool>          Why was this blocked/allowed?")
+        sys.exit(0)
+
+    subcmd = args[1]
+
+    if subcmd == "agent":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic agent <agent_id>")
+            sys.exit(1)
+        agent_id = args[2]
+        svc = _build_forensic_service()
+        profile = svc.query.get_agent_access(agent_id)
+        if not profile:
+            print(f"[FORENSIC] Agent '{agent_id}' not found in current runtime.")
+            print("Note: Start an AgentGuard session and attach ForensicService to query live data.")
+            sys.exit(1)
+        print(json.dumps(profile.model_dump(mode="json"), indent=2))
+
+    elif subcmd == "resource":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic resource <resource_name>")
+            sys.exit(1)
+        resource_name = args[2]
+        svc = _build_forensic_service()
+        profile = svc.query.get_resource_access(resource_name)
+        if not profile:
+            print(f"[FORENSIC] Resource '{resource_name}' not found.")
+            sys.exit(1)
+        print(json.dumps(profile.model_dump(mode="json"), indent=2))
+
+    elif subcmd == "matrix":
+        svc = _build_forensic_service()
+        matrix = svc.query.get_access_matrix()
+        print("=" * 60)
+        print("  ACCESS MATRIX")
+        print("=" * 60)
+        table = matrix.to_table()
+        if not table:
+            print("  (no agents or resources registered in current runtime)")
+        else:
+            header = f"{'AGENT':<20} | " + " | ".join(f"{r[:18]:<18}" for r in matrix.resources)
+            print(header)
+            print("-" * len(header))
+            for agent_id, row in table.items():
+                vals = " | ".join(f"{row.get(r, 'NO'):<18}" for r in matrix.resources)
+                print(f"{agent_id:<20} | {vals}")
+        print("=" * 60)
+
+    elif subcmd == "delegation":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic delegation <agent_id>")
+            sys.exit(1)
+        agent_id = args[2]
+        svc = _build_forensic_service()
+        chain = svc.query.get_agent_delegation_chain(agent_id)
+        if not chain:
+            print(f"[FORENSIC] No delegation chain found for '{agent_id}'.")
+        else:
+            print(json.dumps(chain, indent=2, default=str))
+
+    elif subcmd == "attempts":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic attempts <agent_id>")
+            sys.exit(1)
+        agent_id = args[2]
+        svc = _build_forensic_service()
+        attempts = svc.query.get_agent_attempts(agent_id)
+        print(json.dumps(attempts, indent=2, default=str))
+
+    elif subcmd == "actual-access":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic actual-access <agent_id>")
+            sys.exit(1)
+        agent_id = args[2]
+        svc = _build_forensic_service()
+        actual = svc.query.get_agent_actual_access(agent_id)
+        print(json.dumps(actual, indent=2, default=str))
+
+    elif subcmd == "reachable":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic reachable <agent_id>")
+            sys.exit(1)
+        agent_id = args[2]
+        svc = _build_forensic_service()
+        reachable = svc.query.get_reachable_resources(agent_id)
+        print(f"\n[FORENSIC] Reachable resources for '{agent_id}':")
+        for r in reachable:
+            print(f"  + {r}")
+        if not reachable:
+            print("  (none — agent has no capabilities granting resource access)")
+
+    elif subcmd == "snapshot":
+        svc = _build_forensic_service()
+        snap = svc.take_snapshot(label="cli_snapshot")
+        print(f"[FORENSIC] Snapshot captured: {snap.snapshot_id}")
+        print(json.dumps(snap.model_dump(mode="json"), indent=2, default=str))
+
+    elif subcmd == "diff":
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--before", required=True)
+        parser.add_argument("--after", required=True)
+        parsed = parser.parse_args(args[2:])
+        svc = _build_forensic_service()
+        diff = svc.query.compare_access_snapshots(parsed.before, parsed.after)
+        if not diff:
+            print(f"[FORENSIC] Could not compare snapshots '{parsed.before}' and '{parsed.after}'.")
+            sys.exit(1)
+        print(json.dumps(diff.model_dump(mode="json"), indent=2, default=str))
+
+    elif subcmd == "attack":
+        if len(args) < 3:
+            print("Usage: python -m agentguard forensic attack <attack_id>")
+            sys.exit(1)
+        attack_id = args[2]
+        svc = _build_forensic_service()
+        report = svc.query.get_attack_forensics(attack_id)
+        if not report:
+            print(f"[FORENSIC] Attack '{attack_id}' not found. Ingest results with ForensicService.ingest_attack_result() first.")
+            sys.exit(1)
+        print(json.dumps(report.model_dump(mode="json"), indent=2, default=str))
+
+    elif subcmd == "why":
+        if len(args) < 4:
+            print("Usage: python -m agentguard forensic why <agent_id> <tool_name>")
+            sys.exit(1)
+        agent_id = args[2]
+        tool_name = args[3]
+        svc = _build_forensic_service()
+        explanation = svc.query.get_decision_explanation(
+            agent_id=agent_id,
+            tool_name=tool_name,
+        )
+        print(explanation.to_text())
+
+    else:
+        print(f"Unknown forensic subcommand: {subcmd}")
+        print("Run: python -m agentguard forensic --help")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     main()
+

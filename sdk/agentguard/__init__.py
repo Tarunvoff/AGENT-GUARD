@@ -110,7 +110,36 @@ from agentguard.tracing.correlation import (
 from agentguard.tracing.events import EventType, SecurityEvent
 from agentguard.tracing.tracer import CausalEdge, CausalGraph, CausalNode, TraceManager
 
-__version__ = "0.3.5"
+__version__ = "0.4.0"
+
+# Phase 6.5 — Forensic Intelligence + Product API
+from agentguard.forensics.service import ForensicService
+from agentguard.forensics.queries import ForensicQueryEngine
+from agentguard.forensics.models import (
+    AgentAccessProfile,
+    ResourceAccessProfile,
+    AccessAttempt,
+    ActualAccess,
+    AccessSnapshot,
+    AccessDiff,
+    ForensicExplanation,
+    AttackForensicReport,
+    ForensicIncident,
+    IncidentType,
+    IncidentSeverity,
+    AccessMatrix,
+)
+from agentguard.api.service import ApiService, SecurityPrincipal
+from agentguard.api.models import (
+    AgentAccessResponse,
+    ResourceAccessResponse,
+    AccessMatrixResponse,
+    OverviewResponse,
+    AttackForensicsResponse,
+    IncidentResponse,
+    ErrorResponse,
+    HealthResponse,
+)
 
 __all__ = [
     "AgentGuard",
@@ -226,5 +255,31 @@ __all__ = [
     "SecurityAnalysisEvidence",
     "AdaptiveEngine",
     "CampaignMemory",
+    # Phase 6.5 — Forensic Intelligence + Product API
+    "ForensicService",
+    "ForensicQueryEngine",
+    "AgentAccessProfile",
+    "ResourceAccessProfile",
+    "AccessAttempt",
+    "ActualAccess",
+    "AccessSnapshot",
+    "AccessDiff",
+    "ForensicExplanation",
+    "AttackForensicReport",
+    "ForensicIncident",
+    "IncidentType",
+    "IncidentSeverity",
+    "AccessMatrix",
+    "ApiService",
+    "SecurityPrincipal",
+    "AgentAccessResponse",
+    "ResourceAccessResponse",
+    "AccessMatrixResponse",
+    "OverviewResponse",
+    "AttackForensicsResponse",
+    "IncidentResponse",
+    "ErrorResponse",
+    "HealthResponse",
 ]
+
 

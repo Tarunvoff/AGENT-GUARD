@@ -1,0 +1,19 @@
+{
+  "inc_6fa4742cddc14b88": {
+    "incident_id": "inc_6fa4742cddc14b88",
+    "incident_type": "CAPABILITY_VIOLATION",
+    "severity": "CRITICAL",
+    "agent_id": "agt_unauth",
+    "resource_name": "CustomerPIIVault",
+    "tool_name": "customer_db_read",
+    "decision": "BLOCK",
+    "executed": false,
+    "trace_id": "trc_490ee60d197948c1",
+    "attack_id": null,
+    "decision_id": null,
+    "campaign_id": null,
+    "status": "CONTAINED",
+    "description": "Agent 'DataAgent_Compromised' does not possess declared capability required to invoke tool 'customer_db_read'.",
+    "timestamp": "2026-09-19T11:33:20.877157Z"
+  }
+}

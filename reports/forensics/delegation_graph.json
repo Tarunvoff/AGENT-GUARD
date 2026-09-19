@@ -1,0 +1,22 @@
+{
+  "nodes": [
+    "agt_data",
+    "agt_planner"
+  ],
+  "edges": [
+    {
+      "delegation_id": "dlg_21d14b77db98484e",
+      "delegator_agent_id": "agt_planner",
+      "delegate_agent_id": "agt_data",
+      "granted_capabilities": [
+        "financial_extract"
+      ],
+      "depth": 1,
+      "parent_delegation_id": null,
+      "task_id": "tsk_a41d9a308ae84267",
+      "trace_id": "trc_604751f2cc3d4a69",
+      "status": "active",
+      "timestamp": "2026-09-19T11:33:20.876093Z"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "matrix_id": "mat_fd580775aed74b41",
+  "agents": [
+    "agt_data",
+    "agt_planner",
+    "agt_research",
+    "agt_unauth"
+  ],
+  "resources": [
+    "CustomerPIIVault",
+    "EnterpriseFinancialWarehouse",
+    "PublicWeb"
+  ],
+  "entries": {
+    "agt_data": {
+      "CustomerPIIVault": {
+        "agent_id": "agt_data",
+        "resource_name": "CustomerPIIVault",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      },
+      "EnterpriseFinancialWarehouse": {
+        "agent_id": "agt_data",
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "effective_permission": true,
+        "historically_accessed": true,
+        "attempted": true,
+        "blocked": false
+      },
+      "PublicWeb": {
+        "agent_id": "agt_data",
+        "resource_name": "PublicWeb",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      }
+    },
+    "agt_planner": {
+      "CustomerPIIVault": {
+        "agent_id": "agt_planner",
+        "resource_name": "CustomerPIIVault",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      },
+      "EnterpriseFinancialWarehouse": {
+        "agent_id": "agt_planner",
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "effective_permission": true,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      },
+      "PublicWeb": {
+        "agent_id": "agt_planner",
+        "resource_name": "PublicWeb",
+        "effective_permission": true,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      }
+    },
+    "agt_research": {
+      "CustomerPIIVault": {
+        "agent_id": "agt_research",
+        "resource_name": "CustomerPIIVault",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      },
+      "EnterpriseFinancialWarehouse": {
+        "agent_id": "agt_research",
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      },
+      "PublicWeb": {
+        "agent_id": "agt_research",
+        "resource_name": "PublicWeb",
+        "effective_permission": true,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      }
+    },
+    "agt_unauth": {
+      "CustomerPIIVault": {
+        "agent_id": "agt_unauth",
+        "resource_name": "CustomerPIIVault",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": true,
+        "blocked": true
+      },
+      "EnterpriseFinancialWarehouse": {
+        "agent_id": "agt_unauth",
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      },
+      "PublicWeb": {
+        "agent_id": "agt_unauth",
+        "resource_name": "PublicWeb",
+        "effective_permission": false,
+        "historically_accessed": false,
+        "attempted": false,
+        "blocked": false
+      }
+    }
+  },
+  "generated_at": "2026-09-19T11:33:20.976573Z"
+}

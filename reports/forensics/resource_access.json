@@ -1,0 +1,110 @@
+{
+  "CustomerPIIVault": {
+    "resource_id": "rsc_pii",
+    "resource_name": "CustomerPIIVault",
+    "resource_type": "api",
+    "sensitivity": "CRITICAL",
+    "exposing_tools": [
+      "customer_db_read"
+    ],
+    "authorized_agents": [],
+    "attempted_agents": [
+      "agt_unauth"
+    ],
+    "actual_access_agents": [],
+    "blocked_agents": [
+      "agt_unauth"
+    ],
+    "access_history": [
+      {
+        "attempt_id": "att_3e8eb98bf4bb413c",
+        "agent_id": "agt_unauth",
+        "task_id": null,
+        "trace_id": "trc_490ee60d197948c1",
+        "tool_name": "customer_db_read",
+        "capability_requested": null,
+        "required_capability": null,
+        "resource_name": "CustomerPIIVault",
+        "resource_sensitivity": "CRITICAL",
+        "decision": "BLOCK",
+        "policy_reason": "MISSING_AGENT_CAPABILITY",
+        "context_ids": [],
+        "taint_state": "TAINTED",
+        "authority_contained": false,
+        "executed": false,
+        "execution_count": 0,
+        "timestamp": "2026-09-19T11:33:20.877127Z"
+      }
+    ],
+    "total_attempts": 1,
+    "total_blocked": 1,
+    "total_executions": 0,
+    "generated_at": "2026-09-19T11:33:20.985261Z"
+  },
+  "EnterpriseFinancialWarehouse": {
+    "resource_id": "rsc_fin",
+    "resource_name": "EnterpriseFinancialWarehouse",
+    "resource_type": "api",
+    "sensitivity": "HIGH",
+    "exposing_tools": [
+      "query_financial_metrics"
+    ],
+    "authorized_agents": [
+      "agt_planner",
+      "agt_data"
+    ],
+    "attempted_agents": [
+      "agt_data"
+    ],
+    "actual_access_agents": [
+      "agt_data"
+    ],
+    "blocked_agents": [],
+    "access_history": [
+      {
+        "attempt_id": "att_b014935f31d84031",
+        "agent_id": "agt_data",
+        "task_id": null,
+        "trace_id": "trc_da5cc2adff944ea6",
+        "tool_name": "query_financial_metrics",
+        "capability_requested": null,
+        "required_capability": null,
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "resource_sensitivity": "HIGH",
+        "decision": "ALLOW",
+        "policy_reason": "",
+        "context_ids": [],
+        "taint_state": "CLEAN",
+        "authority_contained": true,
+        "executed": true,
+        "execution_count": 1,
+        "timestamp": "2026-09-19T11:33:20.876772Z"
+      }
+    ],
+    "total_attempts": 1,
+    "total_blocked": 0,
+    "total_executions": 1,
+    "generated_at": "2026-09-19T11:33:20.985359Z"
+  },
+  "PublicWeb": {
+    "resource_id": "rsc_web",
+    "resource_name": "PublicWeb",
+    "resource_type": "api",
+    "sensitivity": "LOW",
+    "exposing_tools": [
+      "public_web_search"
+    ],
+    "authorized_agents": [
+      "agt_planner",
+      "agt_research"
+    ],
+    "attempted_agents": [],
+    "actual_access_agents": [],
+    "blocked_agents": [],
+    "access_history": [],
+    "total_attempts": 0,
+    "total_blocked": 0,
+    "total_executions": 0,
+    "generated_at": "2026-09-19T11:33:20.985382Z"
+  }
+}

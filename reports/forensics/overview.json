@@ -1,0 +1,20 @@
+{
+  "agents": 4,
+  "active_tasks": null,
+  "protected_tools": 3,
+  "mcp_servers": null,
+  "attacks_today": 0,
+  "blocked": 1,
+  "hitl": 0,
+  "bypasses": 0,
+  "sensitive_attempts": 2,
+  "sensitive_prevented": 1,
+  "sensitive_executed": 0,
+  "campaigns": 0,
+  "regressions": 0,
+  "incidents": 1,
+  "availability": {
+    "active_tasks": false,
+    "mcp_servers": false
+  }
+}

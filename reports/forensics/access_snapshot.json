@@ -1,0 +1,87 @@
+{
+  "snapshot_id": "snp_09032d809677453f",
+  "label": "after_attack",
+  "timestamp": "2026-09-19T11:33:20.877589Z",
+  "agents": {
+    "agt_planner": {
+      "agent_id": "agt_planner",
+      "effective_capabilities": [
+        "financial_extract",
+        "public_search"
+      ],
+      "reachable_resources": [
+        "EnterpriseFinancialWarehouse",
+        "PublicWeb"
+      ],
+      "active_delegations": [],
+      "taint_exposure": false
+    },
+    "agt_research": {
+      "agent_id": "agt_research",
+      "effective_capabilities": [
+        "public_search"
+      ],
+      "reachable_resources": [
+        "PublicWeb"
+      ],
+      "active_delegations": [],
+      "taint_exposure": false
+    },
+    "agt_data": {
+      "agent_id": "agt_data",
+      "effective_capabilities": [
+        "financial_extract"
+      ],
+      "reachable_resources": [
+        "EnterpriseFinancialWarehouse"
+      ],
+      "active_delegations": [
+        "dlg_21d14b77db98484e"
+      ],
+      "taint_exposure": false
+    },
+    "agt_unauth": {
+      "agent_id": "agt_unauth",
+      "effective_capabilities": [],
+      "reachable_resources": [],
+      "active_delegations": [],
+      "taint_exposure": false
+    }
+  },
+  "resources": {
+    "EnterpriseFinancialWarehouse": {
+      "resource_id": "rsc_fin",
+      "sensitivity": "HIGH",
+      "exposing_tools": [
+        "query_financial_metrics"
+      ]
+    },
+    "CustomerPIIVault": {
+      "resource_id": "rsc_pii",
+      "sensitivity": "CRITICAL",
+      "exposing_tools": [
+        "customer_db_read"
+      ]
+    },
+    "PublicWeb": {
+      "resource_id": "rsc_web",
+      "sensitivity": "LOW",
+      "exposing_tools": [
+        "public_web_search"
+      ]
+    }
+  },
+  "delegations": {
+    "dlg_21d14b77db98484e": {
+      "delegator": "agt_planner",
+      "delegate": "agt_data",
+      "capabilities": [
+        "financial_extract"
+      ],
+      "status": "active",
+      "depth": 1
+    }
+  },
+  "context_count": 1,
+  "tainted_context_count": 1
+}

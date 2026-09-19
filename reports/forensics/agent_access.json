@@ -1,0 +1,176 @@
+{
+  "agt_planner": {
+    "agent_id": "agt_planner",
+    "agent_name": "PlannerAgent",
+    "trust_level": "high",
+    "declared_capabilities": [
+      "public_search",
+      "financial_extract"
+    ],
+    "delegated_capabilities": [],
+    "effective_capabilities": [
+      "financial_extract",
+      "public_search"
+    ],
+    "restricted_capabilities": [],
+    "reachable_tools": [
+      "public_web_search",
+      "query_financial_metrics"
+    ],
+    "reachable_resources": [
+      "EnterpriseFinancialWarehouse",
+      "PublicWeb"
+    ],
+    "recent_attempts": [],
+    "recent_actual_access": [],
+    "delegation_chain": [],
+    "total_attempts": 0,
+    "total_blocked": 0,
+    "total_allowed": 0,
+    "total_executions": 0,
+    "generated_at": "2026-09-19T11:33:20.971461Z"
+  },
+  "agt_research": {
+    "agent_id": "agt_research",
+    "agent_name": "ResearchAgent",
+    "trust_level": "medium",
+    "declared_capabilities": [
+      "public_search"
+    ],
+    "delegated_capabilities": [],
+    "effective_capabilities": [
+      "public_search"
+    ],
+    "restricted_capabilities": [],
+    "reachable_tools": [
+      "public_web_search"
+    ],
+    "reachable_resources": [
+      "PublicWeb"
+    ],
+    "recent_attempts": [],
+    "recent_actual_access": [],
+    "delegation_chain": [],
+    "total_attempts": 0,
+    "total_blocked": 0,
+    "total_allowed": 0,
+    "total_executions": 0,
+    "generated_at": "2026-09-19T11:33:20.971649Z"
+  },
+  "agt_data": {
+    "agent_id": "agt_data",
+    "agent_name": "DataAgent",
+    "trust_level": "medium",
+    "declared_capabilities": [
+      "financial_extract"
+    ],
+    "delegated_capabilities": [
+      "financial_extract"
+    ],
+    "effective_capabilities": [
+      "financial_extract"
+    ],
+    "restricted_capabilities": [],
+    "reachable_tools": [
+      "query_financial_metrics"
+    ],
+    "reachable_resources": [
+      "EnterpriseFinancialWarehouse"
+    ],
+    "recent_attempts": [
+      {
+        "attempt_id": "att_b014935f31d84031",
+        "agent_id": "agt_data",
+        "task_id": null,
+        "trace_id": "trc_da5cc2adff944ea6",
+        "tool_name": "query_financial_metrics",
+        "capability_requested": null,
+        "required_capability": null,
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "resource_sensitivity": "HIGH",
+        "decision": "ALLOW",
+        "policy_reason": "",
+        "context_ids": [],
+        "taint_state": "CLEAN",
+        "authority_contained": true,
+        "executed": true,
+        "execution_count": 1,
+        "timestamp": "2026-09-19T11:33:20.876772Z"
+      }
+    ],
+    "recent_actual_access": [
+      {
+        "access_id": "axs_ca04dceae0c54f40",
+        "agent_id": "agt_data",
+        "tool_name": "query_financial_metrics",
+        "resource_name": "EnterpriseFinancialWarehouse",
+        "resource_sensitivity": "UNKNOWN",
+        "execution_count": 1,
+        "sensitive_db_calls": 0,
+        "trace_id": null,
+        "task_id": null,
+        "timestamp": "2026-09-19T11:33:20.876815Z"
+      }
+    ],
+    "delegation_chain": [
+      {
+        "delegation_id": "dlg_21d14b77db98484e",
+        "delegator_agent_id": "agt_planner",
+        "delegate_agent_id": "agt_data",
+        "granted_capabilities": [
+          "financial_extract"
+        ],
+        "depth": 1,
+        "parent_delegation_id": null,
+        "task_id": "tsk_a41d9a308ae84267",
+        "trace_id": "trc_604751f2cc3d4a69",
+        "status": "active",
+        "timestamp": "2026-09-19T11:33:20.876093Z"
+      }
+    ],
+    "total_attempts": 1,
+    "total_blocked": 0,
+    "total_allowed": 1,
+    "total_executions": 1,
+    "generated_at": "2026-09-19T11:33:20.971706Z"
+  },
+  "agt_unauth": {
+    "agent_id": "agt_unauth",
+    "agent_name": "DataAgent_Compromised",
+    "trust_level": "medium",
+    "declared_capabilities": [],
+    "delegated_capabilities": [],
+    "effective_capabilities": [],
+    "restricted_capabilities": [],
+    "reachable_tools": [],
+    "reachable_resources": [],
+    "recent_attempts": [
+      {
+        "attempt_id": "att_3e8eb98bf4bb413c",
+        "agent_id": "agt_unauth",
+        "task_id": null,
+        "trace_id": "trc_490ee60d197948c1",
+        "tool_name": "customer_db_read",
+        "capability_requested": null,
+        "required_capability": null,
+        "resource_name": "CustomerPIIVault",
+        "resource_sensitivity": "CRITICAL",
+        "decision": "BLOCK",
+        "policy_reason": "MISSING_AGENT_CAPABILITY",
+        "context_ids": [],
+        "taint_state": "TAINTED",
+        "authority_contained": false,
+        "executed": false,
+        "execution_count": 0,
+        "timestamp": "2026-09-19T11:33:20.877127Z"
+      }
+    ],
+    "recent_actual_access": [],
+    "delegation_chain": [],
+    "total_attempts": 1,
+    "total_blocked": 1,
+    "total_allowed": 0,
+    "total_executions": 0,
+    "generated_at": "2026-09-19T11:33:20.971783Z"
+  }
+}

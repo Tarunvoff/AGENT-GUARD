@@ -5,7 +5,7 @@ from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrus
 from agentguard.client import AgentGuard
 from agentguard.config import AgentGuardConfig
 from agentguard.context.context import Context
-from agentguard.context.provenance import ContextSource, Provenance, ProvenanceHop
+from agentguard.context.provenance import ContextSource, ContextTrustLevel, Provenance, ProvenanceHop, SanitizationRecord
 from agentguard.context.taint import TaintState
 from agentguard.decisions.decision import DecisionAction, SecurityDecision
 from agentguard.delegation.authority import AuthorityGrant
@@ -22,8 +22,14 @@ from agentguard.integrations.apiris import (
     LocalAPIRISAdapter,
 )
 from agentguard.policy.evaluator import PolicyEvaluator
+from agentguard.policy.intent import (
+    DeterministicIntentAnalyzer,
+    IntentAlignmentResult,
+    IntentAlignmentStatus,
+    IntentAnalyzer,
+)
 from agentguard.policy.policy import Policy, PolicyRule, RuleCondition
-from agentguard.risk.models import RiskAssessment, RiskLevel, RiskSignal
+from agentguard.risk.models import RiskAssessment, RiskFactorBreakdown, RiskLevel, RiskSignal
 from agentguard.tasks.task import Task, TaskContext, TaskStatus
 from agentguard.tools.interceptor import protected_tool
 from agentguard.tools.tool import (
@@ -47,7 +53,7 @@ from agentguard.tracing.correlation import (
 from agentguard.tracing.events import EventType, SecurityEvent
 from agentguard.tracing.tracer import CausalEdge, CausalGraph, CausalNode, TraceManager
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "AgentGuard",
@@ -64,8 +70,10 @@ __all__ = [
     "AuthorityGrant",
     "Context",
     "ContextSource",
+    "ContextTrustLevel",
     "Provenance",
     "ProvenanceHop",
+    "SanitizationRecord",
     "TaintState",
     "ToolDefinition",
     "Resource",
@@ -77,9 +85,14 @@ __all__ = [
     "PolicyRule",
     "RuleCondition",
     "PolicyEvaluator",
+    "IntentAnalyzer",
+    "DeterministicIntentAnalyzer",
+    "IntentAlignmentStatus",
+    "IntentAlignmentResult",
     "RiskLevel",
     "RiskSignal",
     "RiskAssessment",
+    "RiskFactorBreakdown",
     "DecisionAction",
     "SecurityDecision",
     "EventType",

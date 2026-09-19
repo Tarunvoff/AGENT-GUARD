@@ -20,6 +20,7 @@ from agentguard.integrations.apiris import (
     LocalAPIRISAdapter,
 )
 from agentguard.policy.evaluator import PolicyEvaluator
+from agentguard.policy.intent import IntentAnalyzer
 from agentguard.tasks.task import Task, TaskContext
 from agentguard.tools.interceptor import protected_tool as _protected_tool_decorator
 from agentguard.tools.tool import Resource, SensitivityLevel, ToolDefinition, ToolRequest
@@ -50,10 +51,13 @@ class AgentGuard:
         config: Optional[AgentGuardConfig] = None,
         ai_secura: Optional[SecurityReasoner] = None,
         apiris: Optional[APIIntelligence] = None,
+        intent_analyzer: Optional[IntentAnalyzer] = None,
     ) -> None:
         self.config = config or AgentGuardConfig()
         self.tracer = TraceManager()
         self.policy_evaluator = PolicyEvaluator(self)
+        if intent_analyzer:
+            self.policy_evaluator.intent_analyzer = intent_analyzer
         
         # Adapters (Dependency Inversion)
         self.ai_secura_adapter: SecurityReasoner = ai_secura or LocalAISecuraAdapter()
@@ -65,7 +69,13 @@ class AgentGuard:
         self.delegation_registry: Dict[str, Delegation] = {}
         self.context_registry: Dict[str, Context] = {}
 
+    @property
+    def policy(self) -> PolicyEvaluator:
+        """Alias for policy_evaluator."""
+        return self.policy_evaluator
+
     def agent(
+
         self,
         name: str,
         framework: str = "custom",
@@ -133,7 +143,7 @@ class AgentGuard:
         source_type: str = "text",
         source_uri: Optional[str] = None,
         trust_level: str = "trusted",
-        taint_state: Union[str, TaintState] = TaintState.TRUSTED,
+        taint_state: Union[str, TaintState] = TaintState.CLEAN,
         agent_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Context:
@@ -154,6 +164,7 @@ class AgentGuard:
         prov = Provenance(
             source=source,
             source_uri=source_uri,
+            trust_level=trust_level,
             originating_agent_id=acting_agent,
             originating_timestamp=datetime.now(timezone.utc),
         )
@@ -191,6 +202,23 @@ class AgentGuard:
         prov.originating_event_id = evt.event_id
 
         return ctx_obj
+
+    def sanitize_context(
+        self,
+        source_context: Context,
+        sanitizer_name: str,
+        reason: str,
+        transformed_data: Any = None,
+        new_taint: TaintState = TaintState.CLEAN,
+    ) -> Context:
+        """Perform an explicit, auditable sanitization operation on an existing context object."""
+        return source_context.sanitize(
+            sanitizer_name=sanitizer_name,
+            reason=reason,
+            transformed_data=transformed_data,
+            new_taint=new_taint,
+            guard=self,
+        )
 
     def register_tool(self, tool_def: ToolDefinition) -> ToolDefinition:
         """Register a tool definition with the SDK."""
@@ -304,23 +332,33 @@ class AgentGuard:
                 active_contexts.append(self.context_registry[current_ctx.context_id])
                 seen_cids.add(current_ctx.context_id)
 
-        # 3. Contexts generated in this trace or held by this agent
+        # 3. Contexts generated in THIS active trace
         trace_id = current_ctx.trace_id if current_ctx else None
-        agent_id = request.agent_id or (current_ctx.agent_id if current_ctx else None)
 
-        for ctx_id, ctx in self.context_registry.items():
-            if ctx_id not in seen_cids:
-                # Match by trace or agent
-                if (trace_id and ctx.metadata.get("trace_id") == trace_id) or (agent_id and ctx.current_agent_id == agent_id):
+        if trace_id:
+            for ctx_id, ctx in self.context_registry.items():
+                if ctx_id not in seen_cids and ctx.metadata.get("trace_id") == trace_id:
                     active_contexts.append(ctx)
                     seen_cids.add(ctx_id)
+
+        # Filter out ancestor contexts that have been superseded by a sanitized context in the active trace
+        sanitized_parent_ids = {
+            ctx.parent_context_id
+            for ctx in active_contexts
+            if ctx.parent_context_id and ctx.metadata.get("sanitized_by") and ctx.taint_state.is_safe
+        }
+        effective_contexts = [
+            c for c in active_contexts
+            if c.context_id not in sanitized_parent_ids
+        ]
 
         return self.policy_evaluator.evaluate(
             tool_def=tool_def,
             request=request,
             ctx=current_ctx,
-            active_contexts=active_contexts,
+            active_contexts=effective_contexts,
         )
+
 
     def _create_delegation_scope(
         self,

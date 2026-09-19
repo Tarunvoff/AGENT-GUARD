@@ -10,16 +10,44 @@ from agentguard.context.taint import TaintState
 from agentguard.decisions.decision import DecisionAction, SecurityDecision
 from agentguard.delegation.authority import AuthorityGrant
 from agentguard.delegation.delegation import Delegation, DelegationScope
+from agentguard.approval.approval import (
+    ApprovalManager,
+    ApprovalRequest,
+    ApprovalStatus,
+)
+from agentguard.gateway.http import HTTPGateway, HTTPInterceptedResponse
+from agentguard.gateway.mcp import MCPGateway, MCPMessage
+
 from agentguard.integrations.ai_secura import (
+    AISecuraClient,
     LocalAISecuraAdapter,
     SecurityAnalysis,
     SecurityContext,
     SecurityReasoner,
 )
+from agentguard.integrations.ai_secura_analysis import (
+    AISecuraAnalysis,
+    ThreatSeverity,
+    IntentAlignment,
+    AIRecommendation,
+    AttackTechnique,
+    EvidenceTriad,
+    AuthorityAnalysis,
+    TaintAnalysis,
+)
+from agentguard.integrations.ollama_adapter import OllamaAISecuraAdapter
+from agentguard.llm_config import LLMConfig
 from agentguard.integrations.apiris import (
     APIAnalysis,
     APIIntelligence,
+    APIRISClient,
     LocalAPIRISAdapter,
+)
+from agentguard.persistence.siem import SIEMExporter, SIEMFormat
+from agentguard.persistence.storage import (
+    PostgresStorage,
+    SQLiteStorage,
+    StorageBackend,
 )
 from agentguard.policy.evaluator import PolicyEvaluator
 from agentguard.policy.intent import (
@@ -53,7 +81,7 @@ from agentguard.tracing.correlation import (
 from agentguard.tracing.events import EventType, SecurityEvent
 from agentguard.tracing.tracer import CausalEdge, CausalGraph, CausalNode, TraceManager
 
-__version__ = "0.2.0"
+__version__ = "0.3.5"
 
 __all__ = [
     "AgentGuard",
@@ -113,8 +141,33 @@ __all__ = [
     "SecurityReasoner",
     "SecurityContext",
     "SecurityAnalysis",
+    "AISecuraClient",
     "LocalAISecuraAdapter",
     "APIIntelligence",
     "APIAnalysis",
+    "APIRISClient",
     "LocalAPIRISAdapter",
+    "MCPGateway",
+    "MCPMessage",
+    "HTTPGateway",
+    "HTTPInterceptedResponse",
+    "ApprovalManager",
+    "ApprovalRequest",
+    "ApprovalStatus",
+    "StorageBackend",
+    "SQLiteStorage",
+    "PostgresStorage",
+    "SIEMExporter",
+    "SIEMFormat",
+    "OllamaAISecuraAdapter",
+    "AISecuraAnalysis",
+    "ThreatSeverity",
+    "IntentAlignment",
+    "AIRecommendation",
+    "AttackTechnique",
+    "EvidenceTriad",
+    "AuthorityAnalysis",
+    "TaintAnalysis",
+    "LLMConfig",
 ]
+

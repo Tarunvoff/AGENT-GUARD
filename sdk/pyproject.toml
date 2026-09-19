@@ -51,3 +51,6 @@ pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "ollama: marks tests requiring a live Ollama instance (deselect with '-m \"not ollama\"')",
+]

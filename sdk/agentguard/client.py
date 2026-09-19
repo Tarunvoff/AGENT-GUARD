@@ -19,6 +19,10 @@ from agentguard.integrations.apiris import (
     APIIntelligence,
     LocalAPIRISAdapter,
 )
+from agentguard.approval.approval import ApprovalManager
+from agentguard.gateway.http import HTTPGateway
+from agentguard.gateway.mcp import MCPGateway
+from agentguard.persistence.storage import SQLiteStorage, StorageBackend
 from agentguard.policy.evaluator import PolicyEvaluator
 from agentguard.policy.intent import IntentAnalyzer
 from agentguard.tasks.task import Task, TaskContext
@@ -52,9 +56,12 @@ class AgentGuard:
         ai_secura: Optional[SecurityReasoner] = None,
         apiris: Optional[APIIntelligence] = None,
         intent_analyzer: Optional[IntentAnalyzer] = None,
+        storage: Optional[StorageBackend] = None,
     ) -> None:
         self.config = config or AgentGuardConfig()
         self.tracer = TraceManager()
+        self.storage: StorageBackend = storage or SQLiteStorage(":memory:")
+        self.approvals = ApprovalManager(self)
         self.policy_evaluator = PolicyEvaluator(self)
         if intent_analyzer:
             self.policy_evaluator.intent_analyzer = intent_analyzer
@@ -73,6 +80,22 @@ class AgentGuard:
     def policy(self) -> PolicyEvaluator:
         """Alias for policy_evaluator."""
         return self.policy_evaluator
+
+    def mcp_gateway(
+        self,
+        server_name: str = "upstream-mcp-server",
+        server_uri: str = "mcp://gateway.internal/v1",
+    ) -> MCPGateway:
+        """Create a Model Context Protocol (MCP) live security gateway."""
+        return MCPGateway(guard=self, server_name=server_name, server_uri=server_uri)
+
+    def http_gateway(
+        self,
+        mock_transport: Optional[Callable[[str, str, Dict[str, Any], Any], Dict[str, Any]]] = None,
+    ) -> HTTPGateway:
+        """Create an HTTP API live security gateway."""
+        return HTTPGateway(guard=self, mock_transport=mock_transport)
+
 
     def agent(
 
@@ -312,6 +335,10 @@ class AgentGuard:
         )
 
         self.tracer.record_event(event)
+        try:
+            self.storage.save_event(event)
+        except Exception:
+            pass
         return event
 
     def evaluate_tool_invocation(self, tool_def: ToolDefinition, request: ToolRequest) -> SecurityDecision:
@@ -352,12 +379,20 @@ class AgentGuard:
             if c.context_id not in sanitized_parent_ids
         ]
 
-        return self.policy_evaluator.evaluate(
+        decision = self.policy_evaluator.evaluate(
             tool_def=tool_def,
             request=request,
             ctx=current_ctx,
             active_contexts=effective_contexts,
         )
+
+        try:
+            self.storage.save_decision(decision, trace_id=trace_id)
+        except Exception:
+            pass
+
+        return decision
+
 
 
     def _create_delegation_scope(

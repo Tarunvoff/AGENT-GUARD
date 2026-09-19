@@ -21,12 +21,18 @@ class EventType(str, Enum):
     CONTEXT_SANITIZED = "context.sanitized"
     TOOL_REQUESTED = "tool.requested"
     TOOL_INVOKED = "tool.invoked"
+    TOOL_COMPLETED = "tool.completed"
     RESOURCE_ACCESS_REQUESTED = "resource.access_requested"
     SECURITY_EVALUATED = "security.evaluated"
     SECURITY_DECISION = "security.decision"
     HUMAN_APPROVAL_REQUESTED = "human.approval_requested"
     HUMAN_APPROVAL_RECEIVED = "human.approval_received"
+    APPROVAL_REQUESTED = "approval.requested"
+    APPROVAL_GRANTED = "approval.granted"
+    APPROVAL_REJECTED = "approval.rejected"
     INCIDENT_CREATED = "incident.created"
+    AI_ANALYSIS_COMPLETED = "ai.analysis_completed"
+
 
 
 class SecurityEvent(BaseModel):

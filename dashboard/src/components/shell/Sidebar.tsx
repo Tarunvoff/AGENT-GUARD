@@ -119,10 +119,11 @@ function NavSection({ section }: { section: NavItem }) {
 }
 
 export default function Sidebar() {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
+    setTime(new Date().toLocaleTimeString());
+    const interval = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -170,7 +171,9 @@ export default function Sidebar() {
             <Lock size={9} />
             LOCAL / SAFE MODE
           </span>
-          <span className="font-mono">{time.toLocaleTimeString()}</span>
+          <span className="font-mono" suppressHydrationWarning>
+            {time ?? '--:--:--'}
+          </span>
         </div>
       </div>
     </aside>

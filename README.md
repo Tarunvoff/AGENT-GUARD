@@ -18,24 +18,16 @@ It is about **what happens when an AI system moves from generating an answer to 
 
 An autonomous agent can:
 
-```text
-Reason
-  ↓
-Choose a target
-  ↓
-Use context
-  ↓
-Delegate to another agent
-  ↓
-Call an MCP server
-  ↓
-Call an API
-  ↓
-Use credentials
-  ↓
-Access a resource
-  ↓
-Execute an action
+```mermaid
+flowchart TD
+    A[🧠 Reason] --> B[🎯 Choose Target]
+    B --> C[📄 Ingest Context]
+    C --> D[🤝 Delegate to Agent]
+    D --> E[🔌 Call MCP Server]
+    E --> F[🌐 Call API]
+    F --> G[🔑 Use Credentials]
+    G --> H[📂 Access Resource]
+    H --> I[⚡ Execute Action]
 ```
 
 And once this happens at enterprise scale, the security problem changes.
@@ -46,20 +38,17 @@ And once this happens at enterprise scale, the security problem changes.
 
 Imagine an enterprise running hundreds or thousands of autonomous agents.
 
-```text
-                         ENTERPRISE AI
-
-        ┌──────────────┬──────────────┬──────────────┐
-        ↓              ↓              ↓
-     Agents           MCP            APIs
-        ↓              ↓              ↓
-   Sub-agents      External Data    Tools
-        ↓              ↓              ↓
-        └──────────────┼──────────────┘
-                       ↓
-                Enterprise Systems
-                       ↓
-                  Sensitive Data
+```mermaid
+flowchart TD
+    subgraph EnterpriseAI ["ENTERPRISE AI LAYER"]
+        Agents["🤖 Agents"] --> SubAgents["Sub-agents"]
+        MCP["🔌 MCP Servers"] --> ExtData["External Data"]
+        APIs["🌐 APIs"] --> Tools["Tools"]
+    end
+    SubAgents --> Systems["🏢 Enterprise Systems"]
+    ExtData --> Systems
+    Tools --> Systems
+    Systems --> SensitiveData[("🔒 Sensitive Data & Assets")]
 ```
 
 An agent may no longer operate alone.
@@ -104,50 +93,29 @@ That is the gap AgentGuard is designed to address.
 
 AgentGuard sits between autonomous AI systems and the resources they can influence.
 
-```text
-                         ENTERPRISE AI
-
-                   Agents / Sub-Agents
-                            │
-                     MCP / APIs / Tools
-                            │
-                            ▼
-                     ┌──────────────┐
-                     │  AGENTGUARD  │
-                     │              │
-                     │ Identity     │
-                     │ Authority    │
-                     │ Context      │
-                     │ Provenance   │
-                     │ Taint        │
-                     │ Policy       │
-                     │ Evidence     │
-                     └──────┬───────┘
-                            │
-                            ▼
-                   Enterprise Resources
+```mermaid
+flowchart TD
+    subgraph EnterpriseAI ["ENTERPRISE AI LAYER"]
+        Agents["🤖 Agents / Sub-Agents"]
+        Integrations["🔌 MCP / APIs / Tools"]
+    end
+    Agents --> Integrations
+    Integrations --> AG["🛡️ AGENTGUARD CONTROL PLANE<br/>• Identity & Authority Containment<br/>• Context Provenance & Taint Lineage<br/>• Deterministic Policy Engine<br/>• Cryptographic Execution Evidence"]
+    AG --> Resources[("🏢 Enterprise Resources & Databases")]
 ```
 
 AgentGuard follows an action across:
 
-```text
-Identity
-   ↓
-Task
-   ↓
-Delegation
-   ↓
-Context
-   ↓
-Provenance
-   ↓
-Authority
-   ↓
-Tool / API
-   ↓
-Policy
-   ↓
-Execution
+```mermaid
+flowchart LR
+    ID[Identity] --> Task[Task]
+    Task --> Del[Delegation]
+    Del --> Ctx[Context]
+    Ctx --> Prov[Provenance]
+    Prov --> Auth[Authority]
+    Auth --> Tool[Tool / API]
+    Tool --> Pol[Policy]
+    Pol --> Exec[Execution]
 ```
 
 The result is not just an alert.
@@ -170,16 +138,16 @@ We call this the **4 MANTA flow**.
 
 First, AgentGuard captures what the autonomous system is doing.
 
-```text
-Agent
-Task
-Tool
-MCP
-API
-Context
-Resource
-Trace
-Execution
+```mermaid
+flowchart LR
+    Agent[Agent] --- Task[Task]
+    Task --- Tool[Tool]
+    Tool --- MCP[MCP]
+    MCP --- API[API]
+    API --- Context[Context]
+    Context --- Resource[Resource]
+    Resource --- Trace[Trace]
+    Trace --- Execution[Execution]
 ```
 
 The objective is simple:
@@ -196,40 +164,27 @@ Observation alone is not enough.
 
 AgentGuard connects the events.
 
-```text
-User
- ↓
-Planner
- ↓ delegation
-Research Agent
- ↓
-MCP
- ↓
-External Context
- ↓
-Analysis Agent
- ↓
-Data Agent
- ↓
-Sensitive Tool
+```mermaid
+flowchart TD
+    User([👤 User]) --> Planner[Planner Agent]
+    Planner -- "delegation" --> Research[Research Agent]
+    Research --> MCP[External MCP]
+    MCP --> ExtCtx[External Context]
+    ExtCtx --> Analysis[Analysis Agent]
+    Analysis --> DataAgent[Data Agent]
+    DataAgent --> SensitiveTool["Sensitive Tool (DB / S3)"]
 ```
 
 AgentGuard tracks:
 
-```text
-Identity
-+
-Delegation
-+
-Authority
-+
-Context
-+
-Provenance
-+
-Taint
-+
-Causal Trace
+```mermaid
+flowchart LR
+    ID[Identity] --- Del[Delegation]
+    Del --- Auth[Authority]
+    Auth --- Ctx[Context]
+    Ctx --- Prov[Provenance]
+    Prov --- Taint[Taint State]
+    Taint --- Trace[Causal Trace DAG]
 ```
 
 This allows security teams to answer:
@@ -242,15 +197,12 @@ This allows security teams to answer:
 
 AgentGuard combines two intelligence layers.
 
-```text
-                    SECURITY ANALYSIS
-
-                         │
-             ┌───────────┴───────────┐
-             │                       │
-             ▼                       ▼
-        AI SECURA                 APIRIS
-    Security Reasoning       API / Tool Intelligence
+```mermaid
+flowchart TD
+    subgraph SecurityAnalysis ["SECURITY ANALYSIS"]
+        Secura["🧠 AI SECURA<br/>Security Reasoning & Threat Analysis"]
+        APIRIS["⚡ APIRIS<br/>API & Tool Intelligence"]
+    end
 ```
 
 ---
@@ -326,18 +278,11 @@ Recommendation
 
 The separation is intentional:
 
-```text
-AI Secura
-     ↓
-"What does this action mean from a security perspective?"
-
-APIRIS
-     ↓
-"What do we know about the API / tool being used?"
-
-Policy Engine
-     ↓
-"Is this action allowed?"
+```mermaid
+flowchart TD
+    Secura["🧠 AI Secura"] -- "What does this action mean from a security perspective?" --> Policy
+    APIRIS["⚡ APIRIS"] -- "What do we know about the API / tool being used?" --> Policy
+    Policy["⚖️ Policy Engine"] --> Decision["'Is this action allowed?' (ALLOW / HITL / BLOCK)"]
 ```
 
 ---
@@ -350,15 +295,12 @@ The AI can reason.
 
 But the policy engine makes the security decision.
 
-```text
-                 SECURITY ANALYSIS
-                         │
-                         ▼
-                DETERMINISTIC POLICY
-                         │
-             ┌───────────┼───────────┐
-             ▼           ▼           ▼
-           ALLOW        HITL        BLOCK
+```mermaid
+flowchart TD
+    Analysis["🔍 SECURITY ANALYSIS (AI Secura + APIRIS)"] --> Policy["⚖️ DETERMINISTIC POLICY ENGINE"]
+    Policy --> Allow["✅ ALLOW"]
+    Policy --> HITL["⏳ HITL (Human Approval)"]
+    Policy --> Block["🚫 BLOCK"]
 ```
 
 AgentGuard enforces deterministic controls around:
@@ -390,20 +332,14 @@ The benign task:
 
 The architecture:
 
-```text
-User
- ↓
-Planner Agent
- ↓
-Research Agent
- ↓
-External MCP
- ↓
-Analysis Agent
- ↓
-Data Agent
- ↓
-Enterprise Database
+```mermaid
+flowchart TD
+    User([👤 User]) --> Planner[Planner Agent]
+    Planner --> Research[Research Agent]
+    Research --> MCP[External MCP]
+    MCP --> Analysis[Analysis Agent]
+    Analysis --> DataAgent[Data Agent]
+    DataAgent --> DB[("Enterprise Database")]
 ```
 
 Now introduce an indirect prompt injection.
@@ -412,20 +348,14 @@ The external MCP returns a malicious instruction requesting internal customer re
 
 AgentGuard sees:
 
-```text
-External MCP
-     ↓
-UNTRUSTED CONTEXT
-     ↓
-TAINTED CONTEXT
-     ↓
-Agent Handoff
-     ↓
-Analysis
-     ↓
-Data Agent
-     ↓
-customer_db.read
+```mermaid
+flowchart TD
+    MCP["🔌 External MCP"] -->|Injects Malicious Instruction| Untrusted["⚠️ UNTRUSTED CONTEXT"]
+    Untrusted -->|Marks Lineage| Tainted["🔴 TAINTED CONTEXT"]
+    Tainted -->|Handoff| Analysis["Analysis Agent"]
+    Analysis -->|Propagates| DataAgent["Data Agent"]
+    DataAgent -.->|Attempts Execution| DBAction["customer_db.read"]
+    DBAction -.->|Intercepted| Policy["🛡️ POLICY: BLOCKED"]
 ```
 
 The important part is that the malicious instruction did not need to directly call the database.
@@ -478,13 +408,11 @@ CRITICAL RESOURCE
 
 The result:
 
-```text
-                 POLICY ENGINE
-
-                     BLOCK
-                       │
-                       ▼
-             Sensitive DB Call = 0
+```mermaid
+flowchart TD
+    Eval["AgentGuard Context & Authority Evaluation"] --> Engine["⚖️ POLICY ENGINE"]
+    Engine --> Block["🚫 BLOCK"]
+    Block --> Metric["Sensitive DB Calls = 0"]
 ```
 
 The most important distinction is:
@@ -509,42 +437,17 @@ AgentGuard doesn't represent the event as a flat log.
 
 It builds a causal graph.
 
-```text
-                    USER
-                     │
-                     ▼
-                PLANNER AGENT
-                     │
-                delegation
-                     │
-                     ▼
-              RESEARCH AGENT
-                     │
-                     ▼
-              EXTERNAL MCP
-                     │
-              malicious context
-                     │
-                     ▼
-             UNTRUSTED CONTEXT
-                     │
-                  tainted
-                     │
-                     ▼
-             ANALYSIS AGENT
-                     │
-                     ▼
-                DATA AGENT
-                     │
-               attempted
-                     │
-                     ▼
-             customer_db.read
-                     │
-                     ▼
-                 POLICY
-                     │
-                   BLOCK
+```mermaid
+flowchart TD
+    User([👤 User]) --> Planner[Planner Agent]
+    Planner -- "delegation" --> Research[Research Agent]
+    Research --> MCP[External MCP]
+    MCP -- "malicious context" --> Untrusted["UNTRUSTED CONTEXT"]
+    Untrusted -- "tainted" --> Analysis[Analysis Agent]
+    Analysis --> DataAgent[Data Agent]
+    DataAgent -- "attempted" --> Target["customer_db.read"]
+    Target --> Policy["⚖️ POLICY"]
+    Policy --> Block["🚫 BLOCK (DB Executions = 0)"]
 ```
 
 This lets security teams investigate:
@@ -561,51 +464,22 @@ rather than simply:
 
 One of AgentGuard's core models is:
 
-```text
-DECLARED
-   ↓
-DELEGATED
-   ↓
-EFFECTIVE
-   ↓
-ATTEMPTED
-   ↓
-ACTUAL
+```mermaid
+flowchart LR
+    Dec[DECLARED] --> Deleg[DELEGATED]
+    Deleg --> Eff[EFFECTIVE]
+    Eff --> Att[ATTEMPTED]
+    Att --> Act[ACTUAL]
 ```
 
 For example:
 
-```text
-Planner Agent
-
-Declared:
-financial_analysis
-
-        ↓
-
-Research Agent
-
-Delegated:
-financial_document_search
-
-        ↓
-
-Data Agent
-
-Attempts:
-customer_db.read
-
-        ↓
-
-Policy
-
-Authority violation
-
-        ↓
-
-Actual execution:
-
-BLOCKED
+```mermaid
+flowchart TD
+    Planner["Planner Agent<br/><i>Declared: financial_analysis</i>"] -->|Delegated| Research["Research Agent<br/><i>Delegated: financial_document_search</i>"]
+    Research -->|Handoff| DataAgent["Data Agent<br/><i>Attempts: customer_db.read</i>"]
+    DataAgent --> Policy["⚖️ Policy: Authority Violation"]
+    Policy --> Block["Actual Execution: <b>BLOCKED</b>"]
 ```
 
 This allows AgentGuard to distinguish:
@@ -628,16 +502,13 @@ Autonomous systems increasingly consume information from outside their trust bou
 
 AgentGuard tracks where context originated.
 
-```text
-USER INPUT
-   ↓
-AGENT OUTPUT
-   ↓
-MCP RESPONSE
-   ↓
-EXTERNAL DOCUMENT
-   ↓
-API RESPONSE
+```mermaid
+flowchart LR
+    UI[User Input] --> Ctx[Context Object]
+    AO[Agent Output] --> Ctx
+    MCP[MCP Response] --> Ctx
+    DOC[External Document] --> Ctx
+    API[API Response] --> Ctx
 ```
 
 Each context object can carry:
@@ -654,26 +525,12 @@ Trace
 
 For example:
 
-```text
-Source:
-external_mcp
-
-Trust:
-UNTRUSTED
-
-Taint:
-TAINTED
-
-Propagation:
-MCP
- ↓
-Research Agent
- ↓
-Analysis Agent
- ↓
-Data Agent
- ↓
-Sensitive Tool
+```mermaid
+flowchart TD
+    Source["Source: external_mcp<br/>Trust: UNTRUSTED<br/>Taint: TAINTED"] --> RA[Research Agent]
+    RA --> AA[Analysis Agent]
+    AA --> DA[Data Agent]
+    DA --> ST["Sensitive Tool (Blocked)"]
 ```
 
 This prevents security context from disappearing when information moves between agents.
@@ -686,54 +543,34 @@ A security boundary that is never attacked is only a hypothesis.
 
 So AgentGuard includes an offensive validation engine.
 
-```text
-             DEFENSIVE SIDE
-
-Observe
-   ↓
-Correlate
-   ↓
-Analyze
-   ↓
-Enforce
-   ↓
-Evidence
+```mermaid
+flowchart TD
+    subgraph DefendSide ["DEFENSIVE CONTROL PLANE"]
+        Obs["Observe"] --> Corr["Correlate"]
+        Corr --> Ana["Analyze"]
+        Ana --> Enf["Enforce"]
+        Enf --> Evid["Runtime Evidence"]
+    end
+    subgraph OffendSide ["OFFENSIVE VALIDATION ENGINE"]
+        Seed["Attack Seed"] --> Mut["Mutation Engine"]
+        Mut --> Probe["Boundary Search"]
+        Probe --> Bypass{"Bypass Detected?"}
+        Bypass -- Yes --> Regr["Auto Regression Fixture"]
+        Regr --> Replay["Secured Replay Verification"]
+    end
+    Evid --> Seed
+    Replay --> Obs
 ```
 
-And:
+The two sides form a continuous security loop:
 
-```text
-             OFFENSIVE SIDE
-
-Attack Seed
-   ↓
-Mutation
-   ↓
-Defense Response
-   ↓
-Boundary Search
-   ↓
-Bypass?
-   ↓
-Regression
-   ↓
-Secured Replay
-```
-
-The two sides form a loop:
-
-```text
-        DEFEND
-          ↓
-        ATTACK
-          ↓
-        OBSERVE
-          ↓
-        LEARN
-          ↓
-       IMPROVE
-          ↓
-        REPLAY
+```mermaid
+flowchart LR
+    Defend["🛡️ DEFEND"] --> Attack["⚔️ ATTACK"]
+    Attack --> Observe["👁️ OBSERVE"]
+    Observe --> Learn["🧠 LEARN"]
+    Learn --> Improve["🔧 IMPROVE"]
+    Improve --> Replay["🔄 REPLAY"]
 ```
 
 ---
@@ -742,41 +579,28 @@ The two sides form a loop:
 
 Phase 5 extends static attack replay into adaptive security validation.
 
-The engine can:
-
-```text
-Select Attack Seed
-       ↓
-Observe Defense
-       ↓
-Analyze Result
-       ↓
-Understand Defense
-       ↓
-Plan Mutation
-       ↓
-Explore Boundary
-       ↓
-Detect Bypass
-       ↓
-Create Regression
-       ↓
-Replay Against Secured System
+```mermaid
+flowchart TD
+    A[Select Attack Seed] --> B[Observe Defense Response]
+    B --> C[Analyze Result]
+    C --> D[Understand Defense Boundary]
+    D --> E[Plan Mutation]
+    E --> F[Explore Boundary]
+    F --> G[Detect Bypass]
+    G --> H[Create Regression Fixture]
+    H --> I[Replay Against Secured System]
 ```
 
-The system maintains full mutation lineage.
+The system maintains full mutation lineage:
 
-```text
-Attack Seed
-│
-├── Mutation A
-│   ├── Mutation A1
-│   └── Mutation A2
-│
-├── Mutation B
-│   └── Mutation B1
-│
-└── Boundary Probe
+```mermaid
+flowchart TD
+    Seed["🎯 Attack Seed: indirect_prompt_injection"]
+    Seed --> MutA["Mutation A (Taint Laundering)"]
+    Seed --> MutB["Mutation B (Tool Chain Escalation)"]
+    MutA --> MutA1["Mutation A1 (Depth Stacking)"]
+    MutA --> MutA2["Mutation A2 (Encoding Obfuscation)"]
+    MutB --> MutB1["Mutation B1 (Scope Shadowing)"]
 ```
 
 Every node maintains:
@@ -799,30 +623,23 @@ AgentGuard includes a controlled vulnerable target.
 
 The offensive engine discovered a bypass:
 
-```text
-ATTACK
-   ↓
-ALLOW
-   ↓
-TOOL EXECUTED
-   ↓
-Sensitive DB Calls = 1
-   ↓
-BYPASS DETECTED
+```mermaid
+flowchart LR
+    Atk["Attack Variant"] --> Vuln["Vulnerable Target"]
+    Vuln --> Bypass["Bypass Detected (DB=1)"]
+    Bypass --> Reg["Auto Regression Fixture"]
+    Reg --> SecReplay["Secured Engine Replay"]
+    SecReplay --> Block["Blocked (DB=0)"]
 ```
 
-Instead of simply reporting the bypass, AgentGuard creates a regression.
+Instead of simply reporting the bypass, AgentGuard creates a regression:
 
-```text
-BYPASS
-  ↓
-REGRESSION FIXTURE
-  ↓
-SECURED REPLAY
-  ↓
-BLOCK
-  ↓
-Sensitive DB Calls = 0
+```mermaid
+flowchart TD
+    BYPASS["🚨 BYPASS DETECTED"] --> FIXTURE["📁 REGRESSION FIXTURE"]
+    FIXTURE --> REPLAY["🔄 SECURED REPLAY"]
+    REPLAY --> BLOCK["🛡️ BLOCK"]
+    BLOCK --> ZERO["Sensitive DB Calls = 0"]
 ```
 
 This turns an attack into a permanent security test.
@@ -849,21 +666,13 @@ P95 latency: 0.93 ms
 
 We also demonstrated a deliberate vulnerable target:
 
-```text
-Vulnerable Target
-
-ALLOW
-Tool executed: true
-Sensitive DB calls: 1
-        ↓
-BYPASS DETECTED
-        ↓
-REGRESSION CREATED
-        ↓
-SECURED REPLAY
-        ↓
-BLOCK
-Sensitive DB calls: 0
+```mermaid
+flowchart TD
+    Vuln["Vulnerable Target"] --> Res["ALLOW (Tool executed = true, DB calls = 1)"]
+    Res --> Det["🚨 BYPASS DETECTED"]
+    Det --> Reg["📁 REGRESSION CREATED"]
+    Reg --> Rep["🔄 SECURED REPLAY"]
+    Rep --> Blk["🛡️ BLOCK (DB calls = 0)"]
 ```
 
 These results come from our controlled local validation environment and should not be interpreted as a guarantee against arbitrary real-world attacks.
@@ -917,28 +726,18 @@ WHY WAS IT ALLOWED OR BLOCKED?
 
 A forensic investigation can connect:
 
-```text
-Agent
- ↓
-Task
- ↓
-Delegation
- ↓
-Context
- ↓
-Provenance
- ↓
-Taint
- ↓
-Authority
- ↓
-Tool
- ↓
-Policy
- ↓
-Execution
- ↓
-Impact
+```mermaid
+flowchart TD
+    Agent[Agent] --> Task[Task]
+    Task --> Del[Delegation]
+    Del --> Ctx[Context]
+    Ctx --> Prov[Provenance]
+    Prov --> Taint[Taint State]
+    Taint --> Auth[Authority]
+    Auth --> Tool[Tool Request]
+    Tool --> Policy[Policy Engine]
+    Policy --> Exec[Execution Evidence]
+    Exec --> Impact[Security Impact]
 ```
 
 Instead of:
@@ -958,31 +757,26 @@ That is the difference between an alert and a forensic explanation.
 AgentGuard is designed around five security outcomes.
 
 ### 1. VISIBILITY
-
 Know what autonomous agents are actually doing.
 
 ### 2. CONTROL
-
 Prevent actions that cross authority or trust boundaries.
 
 ### 3. EXPLAINABILITY
-
 Understand why an agent took an action.
 
 ### 4. CONTINUOUS VALIDATION
-
 Continuously attack the security boundary in a controlled environment.
 
 ### 5. FORENSICS
-
 Distinguish:
 
-```text
-Requested
-Attempted
-Allowed
-Executed
-Blocked
+```mermaid
+flowchart LR
+    Req[Requested] --> Att[Attempted]
+    Att --> All[Allowed]
+    All --> Exec[Executed]
+    Att -.-> Blk[Blocked]
 ```
 
 This turns autonomous AI from a black-box execution layer into an observable and enforceable security surface.
@@ -991,46 +785,34 @@ This turns autonomous AI from a black-box execution layer into an observable and
 
 # The Complete AgentGuard Architecture
 
-```text
-                         ENTERPRISE AI
-                              │
-                 ┌────────────┼────────────┐
-                 ▼            ▼            ▼
-              AGENTS         MCP          APIs
-                 │            │            │
-                 └────────────┼────────────┘
-                              ▼
-                        AGENTGUARD
-                              │
-               ┌──────────────┼──────────────┐
-               ▼              ▼              ▼
-            OBSERVE        CORRELATE       ANALYZE
-                                               │
-                                     ┌─────────┴─────────┐
-                                     ▼                   ▼
-                                 AI SECURA             APIRIS
-                                     └─────────┬─────────┘
-                                               ▼
-                                          ENFORCEMENT
-                                               │
-                                  ┌────────────┼────────────┐
-                                  ▼            ▼            ▼
-                                ALLOW         HITL         BLOCK
-                                                              │
-                                                              ▼
-                                                          EVIDENCE
-                                                              │
-                                                              ▼
-                                                          FORENSICS
-                                                              │
-                                                              ▼
-                                                   OFFENSIVE VALIDATION
-                                                              │
-                                                              ▼
-                                                          REGRESSION
-                                                              │
-                                                              ▼
-                                                      SECURED REPLAY
+```mermaid
+flowchart TD
+    subgraph Enterprise ["ENTERPRISE AI LAYER"]
+        Agents["🤖 Autonomous Agents"]
+        MCP["🔌 MCP Servers"]
+        APIs["🌐 Tool & Resource APIs"]
+    end
+
+    Agents & MCP & APIs --> Observe["01 — OBSERVE (Telemetry & Spans)"]
+    Observe --> Correlate["02 — CORRELATE (Provenance & Causal DAG)"]
+    Correlate --> Analyze["03 — ANALYZE"]
+    
+    subgraph Intelligence ["SECURITY INTELLIGENCE"]
+        Secura["🧠 AI SECURA (Reasoning)"]
+        APIRIS["⚡ APIRIS (API Intelligence)"]
+    end
+    
+    Analyze --> Secura & APIRIS
+    Secura & APIRIS --> Enforce["04 — ENFORCE (Deterministic Policy)"]
+    
+    Enforce --> Allow["✅ ALLOW"]
+    Enforce --> HITL["⏳ HITL"]
+    Enforce --> Block["🚫 BLOCK"]
+    
+    Block & Allow & HITL --> Evidence["📁 Cryptographic Evidence Log"]
+    Evidence --> Forensics["🔍 Forensic Attribution Engine"]
+    Forensics --> Offensive["⚔️ Offensive Validation Engine"]
+    Offensive --> Regression["📁 Regression Suite & Replay"]
 ```
 
 ---
@@ -1047,46 +829,29 @@ Enterprise authorization cannot be.
 
 That is why AgentGuard separates:
 
-```text
-AI REASONING
-      +
-API / TOOL INTELLIGENCE
-      ↓
-DETERMINISTIC POLICY
-      ↓
-EXECUTION CONTROL
-      ↓
-RUNTIME EVIDENCE
+```mermaid
+flowchart TD
+    A["🧠 AI REASONING + ⚡ API INTELLIGENCE"] --> B["⚖️ DETERMINISTIC POLICY ENGINE"]
+    B --> C["🛡️ EXECUTION CONTROL"]
+    C --> D["📁 RUNTIME EVIDENCE"]
 ```
 
 ---
 
 # What AgentGuard Ultimately Provides
 
-```text
-IDENTITY
-    +
-AUTHORITY
-    +
-CONTEXT
-    +
-PROVENANCE
-    +
-INTENT
-    +
-TAINT
-    +
-POLICY
-    +
-EXECUTION EVIDENCE
-    +
-OFFENSIVE VALIDATION
-    +
-FORENSICS
-
-             ↓
-
-       AGENTGUARD
+```mermaid
+flowchart LR
+    ID[Identity] --- Auth[Authority]
+    Auth --- Ctx[Context]
+    Ctx --- Prov[Provenance]
+    Prov --- Intent[Intent]
+    Intent --- Taint[Taint]
+    Taint --- Policy[Policy]
+    Policy --- Evid[Evidence]
+    Evid --- Off[Offensive Validation]
+    Off --- Foren[Forensics]
+    Foren ==> AG["🛡️ AGENTGUARD CONTROL PLANE"]
 ```
 
 ---
@@ -1117,24 +882,16 @@ Security has to follow the action.
 
 Across:
 
-```text
-Agents
-↓
-Delegations
-↓
-MCP
-↓
-APIs
-↓
-Tools
-↓
-Context
-↓
-Authority
-↓
-Resources
-↓
-Execution
+```mermaid
+flowchart LR
+    Agents[Agents] --> Del[Delegations]
+    Del --> MCP[MCP]
+    MCP --> APIs[APIs]
+    APIs --> Tools[Tools]
+    Tools --> Context[Context]
+    Context --> Authority[Authority]
+    Authority --> Resources[Resources]
+    Resources --> Execution[Execution]
 ```
 
 That is the control plane AgentGuard is building.

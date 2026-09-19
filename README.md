@@ -1,8 +1,14 @@
-# 🛡️ AgentGuard
+<div align="center">
 
-## Security Control Plane for Autonomous AI
+<img src="./assets/logo.png" alt="AgentGuard Logo" width="220" />
+
+# AgentGuard
+
+### Security Control Plane for Autonomous AI
 
 > **When AI can act, security must follow the action.**
+
+</div>
 
 ---
 

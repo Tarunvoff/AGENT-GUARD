@@ -118,6 +118,8 @@ function NavSection({ section }: { section: NavItem }) {
   );
 }
 
+import Image from 'next/image';
+
 export default function Sidebar() {
   const [time, setTime] = useState<string | null>(null);
 
@@ -130,14 +132,14 @@ export default function Sidebar() {
   return (
     <aside className="w-60 min-h-screen bg-[#080c14] border-r border-zinc-800/50 flex flex-col">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-zinc-800/50">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
-            <Shield size={16} className="text-white" />
+      <div className="px-4 py-4 border-b border-zinc-800/50">
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-black/40 border border-sky-500/30 flex items-center justify-center shadow-lg shadow-sky-500/10 group-hover:border-sky-500/60 transition-colors">
+            <Image src="/logo.png" alt="AgentGuard Logo" width={36} height={36} className="w-full h-full object-contain" />
           </div>
           <div>
-            <div className="text-sm font-bold text-white tracking-wide">AgentGuard</div>
-            <div className="text-[10px] text-zinc-500 tracking-wider">SECURITY CONTROL PLANE</div>
+            <div className="text-sm font-bold text-white tracking-wide group-hover:text-sky-300 transition-colors">AgentGuard</div>
+            <div className="text-[9px] text-zinc-500 tracking-wider">CONTROL PLANE</div>
           </div>
         </Link>
       </div>

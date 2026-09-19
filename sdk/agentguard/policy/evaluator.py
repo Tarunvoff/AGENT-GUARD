@@ -1,15 +1,16 @@
 """Deterministic policy evaluator enforcing security boundaries."""
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from agentguard.agents.identity import AgentTrustLevel
 from agentguard.context.context import Context
 from agentguard.context.taint import TaintState
 from agentguard.decisions.decision import DecisionAction, SecurityDecision
 from agentguard.integrations.ai_secura import SecurityAnalysis, SecurityContext
 from agentguard.integrations.apiris import APIAnalysis
+from agentguard.policy.intent import DeterministicIntentAnalyzer, IntentAlignmentResult, IntentAnalyzer
 from agentguard.policy.policy import Policy
-from agentguard.risk.models import RiskLevel, RiskSignal
+from agentguard.risk.models import RiskFactorBreakdown, RiskLevel, RiskSignal
 from agentguard.tools.tool import SensitivityLevel, ToolDefinition, ToolRequest
 from agentguard.tracing.correlation import CorrelationContext, generate_id
 from agentguard.tracing.events import EventType
@@ -21,14 +22,16 @@ if TYPE_CHECKING:
 class PolicyEvaluator:
     """Deterministic security policy engine for AgentGuard.
     
-    Adheres strictly to the architectural principle:
-    - AI (AI Secura) and APIRIS provide intelligence and reasoning signals.
-    - Deterministic policy evaluates signals, state, and rules to decide enforcement:
+    Adheres strictly to the architectural principles:
+    - AI reasons (AI Secura / Intent Analysis).
+    - Deterministic policy evaluates signals, state, authority containment, intent alignment,
+      and data taint to render decisions:
       ALLOW / MONITOR / HUMAN_APPROVAL / QUARANTINE / BLOCK / REVOKE.
     """
 
     def __init__(self, guard: "AgentGuard") -> None:
         self.guard = guard
+        self.intent_analyzer: IntentAnalyzer = DeterministicIntentAnalyzer()
         self.default_policies: List[Policy] = []
 
     def evaluate(
@@ -53,155 +56,198 @@ class PolicyEvaluator:
         if active_delegation:
             evidence_refs.append(active_delegation.delegation_id)
 
-        # 3. Monotonic Capability & Authority Containment Check
-        if tool_def.required_capabilities:
-            for req_cap in tool_def.required_capabilities:
-                # Check delegation grant first if in a delegated scope
-                if active_delegation is not None:
-                    if not active_delegation.authority_grant.contains_capability(req_cap):
-                        decision = SecurityDecision(
-                            action=DecisionAction.BLOCK,
-                            risk_level=RiskLevel.HIGH,
-                            risk_score=0.9,
-                            reason_code="DELEGATION_AUTHORITY_EXCEEDED",
-                            explanation=(
-                                f"Agent '{acting_agent.name if acting_agent else agent_id}' was delegated authority "
-                                f"lacking required capability '{req_cap}' for tool '{tool_def.name}'."
-                            ),
-                            trace_id=trace_id,
-                            evidence_references=evidence_refs,
-                        )
-                        self._emit_decision_events(tool_def, request, decision)
-                        return decision
-
-                # Check agent's own declared capabilities
-                elif acting_agent is not None:
-                    if not acting_agent.has_capability(req_cap):
-                        decision = SecurityDecision(
-                            action=DecisionAction.BLOCK,
-                            risk_level=RiskLevel.HIGH,
-                            risk_score=0.85,
-                            reason_code="MISSING_AGENT_CAPABILITY",
-                            explanation=(
-                                f"Agent '{acting_agent.name}' does not possess declared capability '{req_cap}' "
-                                f"required to invoke tool '{tool_def.name}'."
-                            ),
-                            trace_id=trace_id,
-                            evidence_references=evidence_refs,
-                        )
-                        self._emit_decision_events(tool_def, request, decision)
-                        return decision
-
-        # 4. Agent Trust Level vs Tool Sensitivity Check
-        if acting_agent is not None:
-            if acting_agent.trust_level == AgentTrustLevel.UNTRUSTED and tool_def.sensitivity != SensitivityLevel.LOW:
-                decision = SecurityDecision(
-                    action=DecisionAction.BLOCK,
-                    risk_level=RiskLevel.HIGH,
-                    risk_score=0.8,
-                    reason_code="UNTRUSTED_AGENT_SENSITIVE_ACCESS",
-                    explanation=f"Untrusted agent '{acting_agent.name}' is prohibited from invoking {tool_def.sensitivity.value} tool '{tool_def.name}'.",
-                    trace_id=trace_id,
-                    evidence_references=evidence_refs,
-                )
-                self._emit_decision_events(tool_def, request, decision)
-                return decision
-
-        # 5. Taint Propagation & Sensitive Sink Governance
-        taint_states = [c.taint_state for c in active_contexts if c is not None]
+        # 3. Influencing Contexts & Taint Assessment
+        influencing_ctx_ids = [c.context_id for c in active_contexts if c is not None]
         for c in active_contexts:
-            if c.context_id:
+            if c.context_id and c.context_id not in evidence_refs:
                 evidence_refs.append(c.context_id)
 
-        has_taint = any(t in (TaintState.TAINTED, TaintState.UNTRUSTED) for t in taint_states)
-        if has_taint and tool_def.sensitivity in (SensitivityLevel.HIGH, SensitivityLevel.CRITICAL):
+        has_tainted_context = any(c.taint_state == TaintState.TAINTED for c in active_contexts)
+        has_untrusted_origin = any(c.source.value in ("external_mcp", "external_api") or c.trust_level == "untrusted" for c in active_contexts)
+        is_critical_sink = tool_def.sensitivity in (SensitivityLevel.HIGH, SensitivityLevel.CRITICAL)
+
+        # 4. Authority Containment Evaluation
+        authority_violation = False
+        authority_reason = ""
+        delegated_caps: List[str] = []
+
+        if active_delegation is not None:
+            delegated_caps = list(active_delegation.authority_grant.granted_capabilities)
+            for req_cap in tool_def.required_capabilities:
+                if not active_delegation.authority_grant.contains_capability(req_cap):
+                    authority_violation = True
+                    authority_reason = f"Delegated authority {delegated_caps} lacks required capability '{req_cap}'"
+                    break
+        elif acting_agent is not None:
+            delegated_caps = acting_agent.capability_names()
+            for req_cap in tool_def.required_capabilities:
+                if not acting_agent.has_capability(req_cap):
+                    authority_violation = True
+                    authority_reason = f"Agent '{acting_agent.name}' does not possess declared capability '{req_cap}'"
+                    break
+
+        authority_containment_report = {
+            "requesting_agent": acting_agent.name if acting_agent else agent_id,
+            "required_capabilities": tool_def.required_capabilities,
+            "delegated_capabilities": delegated_caps,
+            "delegation_id": delegation_id,
+            "contained": not authority_violation,
+            "reason": authority_reason if authority_violation else "Authority containment verified.",
+        }
+
+        # 5. Intent Alignment Evaluation
+        original_intent = ctx.metadata.get("intent", "Unspecified task intent") if ctx else "Unspecified task intent"
+        target_res_name = tool_def.target_resources[0].name if tool_def.target_resources else None
+        
+        intent_res: IntentAlignmentResult = self.intent_analyzer.analyze(
+            original_intent=original_intent,
+            tool_name=tool_def.name,
+            required_capabilities=tool_def.required_capabilities,
+            target_resource_sensitivity=tool_def.sensitivity.value,
+            target_resource_name=target_res_name,
+            arguments=request.arguments,
+        )
+        intent_violation = intent_res.is_violation
+
+        intent_alignment_report = {
+            "original_intent": original_intent,
+            "action_name": tool_def.name,
+            "status": intent_res.status.value,
+            "aligned": not intent_violation,
+            "explanation": intent_res.explanation,
+            "indicators": intent_res.matched_indicators,
+        }
+
+        # 6. Compute Deterministic Risk Breakdown
+        risk_breakdown = RiskFactorBreakdown.compute(
+            has_tainted_context=has_tainted_context,
+            is_critical_sink=is_critical_sink,
+            has_authority_violation=authority_violation,
+            has_intent_violation=intent_violation,
+            is_untrusted_origin=has_untrusted_origin,
+        )
+
+        # 7. Build Structured Explanation
+        structured_explanation = {
+            "agent": acting_agent.name if acting_agent else agent_id,
+            "requested_tool": tool_def.name,
+            "required_capabilities": tool_def.required_capabilities,
+            "delegated_capabilities": delegated_caps,
+            "authority_containment": "PASSED" if not authority_violation else "FAILED",
+            "original_intent": original_intent,
+            "intent_alignment": "PASSED" if not intent_violation else "FAILED",
+            "context_sources": [c.source.value for c in active_contexts],
+            "context_taint_states": [c.taint_state.value for c in active_contexts],
+            "sensitive_sink": target_res_name or tool_def.name,
+            "sink_sensitivity": tool_def.sensitivity.value,
+            "risk_factors": risk_breakdown.risk_factors,
+            "total_risk_score": risk_breakdown.total_score,
+        }
+
+        # 8. Deterministic Decision Rule Evaluations
+        # Rule 8a: Authority Escalation Violation -> BLOCK
+        if authority_violation:
+            reason_code = "DELEGATION_AUTHORITY_EXCEEDED" if active_delegation else "MISSING_AGENT_CAPABILITY"
+            explanation = (
+                f"Agent '{acting_agent.name if acting_agent else agent_id}' was delegated authority "
+                f"lacking required capability '{tool_def.required_capabilities}' for tool '{tool_def.name}'."
+                if active_delegation else
+                f"Agent '{acting_agent.name if acting_agent else agent_id}' does not possess declared capability "
+                f"required to invoke tool '{tool_def.name}'."
+            )
+            decision = SecurityDecision(
+                action=DecisionAction.BLOCK,
+                risk_level=RiskLevel.HIGH if risk_breakdown.total_score < 0.7 else RiskLevel.CRITICAL,
+                risk_score=risk_breakdown.total_score,
+                reason_code=reason_code,
+                explanation=explanation,
+                trace_id=trace_id,
+                evidence_references=evidence_refs,
+                influencing_context_ids=influencing_ctx_ids,
+                authority_containment=authority_containment_report,
+                intent_alignment=intent_alignment_report,
+                risk_breakdown=risk_breakdown,
+                structured_explanation=structured_explanation,
+            )
+            self._emit_decision_events(tool_def, request, decision)
+            return decision
+
+        # Rule 8b: Tainted Context flowing into Sensitive Sink -> BLOCK
+        if has_tainted_context and is_critical_sink:
             if self.guard.config.block_tainted_sink_access:
                 decision = SecurityDecision(
                     action=DecisionAction.BLOCK,
                     risk_level=RiskLevel.CRITICAL,
-                    risk_score=0.95,
+                    risk_score=risk_breakdown.total_score,
                     reason_code="TAINTED_CONTEXT_INTO_SENSITIVE_SINK",
                     explanation=(
-                        f"Tainted or untrusted context attempted to flow into {tool_def.sensitivity.value} "
-                        f"sensitive tool/resource '{tool_def.name}' without verification."
+                        f"Tainted or injected context attempted to flow into {tool_def.sensitivity.value} "
+                        f"sensitive tool/resource '{tool_def.name}' without explicit verification/sanitization."
                     ),
                     trace_id=trace_id,
                     evidence_references=evidence_refs,
+                    influencing_context_ids=influencing_ctx_ids,
+                    authority_containment=authority_containment_report,
+                    intent_alignment=intent_alignment_report,
+                    risk_breakdown=risk_breakdown,
+                    structured_explanation=structured_explanation,
                 )
                 self._emit_decision_events(tool_def, request, decision)
                 return decision
 
-        # 6. APIRIS Tool & API Intelligence Analysis
-        apiris_adapter = self.guard.apiris_adapter
-        if apiris_adapter is not None:
-            apiris_res: APIAnalysis = apiris_adapter.analyze(request)
-            signals.extend(apiris_res.signals)
-            if apiris_res.recommended_action == "BLOCK" or apiris_res.risk_score >= self.guard.config.default_risk_threshold:
-                decision = SecurityDecision(
-                    action=DecisionAction.BLOCK,
-                    risk_level=RiskLevel.HIGH if apiris_res.risk_score < 0.9 else RiskLevel.CRITICAL,
-                    risk_score=apiris_res.risk_score,
-                    reason_code="APIRIS_API_RISK_REJECTED",
-                    explanation=f"APIRIS intelligence engine flagged tool request '{tool_def.name}' as dangerous: score={apiris_res.risk_score}.",
-                    trace_id=trace_id,
-                    evidence_references=evidence_refs,
-                )
-                self._emit_decision_events(tool_def, request, decision)
-                return decision
-
-        # 7. AI Secura Security Reasoning
-        ai_secura_adapter = self.guard.ai_secura_adapter
-        if ai_secura_adapter is not None:
-            sec_ctx = SecurityContext(
+        # Rule 8c: Untrusted Agent Sensitive Access -> BLOCK
+        if acting_agent is not None and acting_agent.trust_level == AgentTrustLevel.UNTRUSTED and tool_def.sensitivity != SensitivityLevel.LOW:
+            decision = SecurityDecision(
+                action=DecisionAction.BLOCK,
+                risk_level=RiskLevel.HIGH,
+                risk_score=risk_breakdown.total_score,
+                reason_code="UNTRUSTED_AGENT_SENSITIVE_ACCESS",
+                explanation=f"Untrusted agent '{acting_agent.name}' is prohibited from invoking {tool_def.sensitivity.value} tool '{tool_def.name}'.",
                 trace_id=trace_id,
-                task_intent=ctx.metadata.get("intent", "unspecified") if ctx else "unspecified",
-                acting_agent_id=agent_id,
-                acting_agent_name=acting_agent.name if acting_agent else None,
-                acting_agent_trust=acting_agent.trust_level.value if acting_agent else None,
-                delegation_chain=[d.model_dump() for d in self.guard.delegation_registry.values() if d.trace_id == trace_id],
-                context_provenance=[c.provenance.model_dump() for c in active_contexts],
-                taint_states=[t.value for t in taint_states],
-                tool_name=tool_def.name,
-                tool_arguments=request.arguments,
-                target_resource_sensitivity=tool_def.sensitivity.value,
+                evidence_references=evidence_refs,
+                influencing_context_ids=influencing_ctx_ids,
+                authority_containment=authority_containment_report,
+                intent_alignment=intent_alignment_report,
+                risk_breakdown=risk_breakdown,
+                structured_explanation=structured_explanation,
             )
-            ai_analysis: SecurityAnalysis = ai_secura_adapter.analyze(sec_ctx)
-            signals.extend(ai_analysis.signals)
+            self._emit_decision_events(tool_def, request, decision)
+            return decision
 
-            if ai_analysis.intent_drift_detected and tool_def.sensitivity in (SensitivityLevel.HIGH, SensitivityLevel.CRITICAL):
-                decision = SecurityDecision(
-                    action=DecisionAction.BLOCK,
-                    risk_level=RiskLevel.CRITICAL,
-                    risk_score=ai_analysis.risk_score,
-                    reason_code="AI_SECURA_INTENT_DRIFT_DETECTED",
-                    explanation=f"AI Secura detected critical intent drift: {ai_analysis.summary}",
-                    trace_id=trace_id,
-                    evidence_references=evidence_refs,
-                )
-                self._emit_decision_events(tool_def, request, decision)
-                return decision
+        # Rule 8d: User Intent Alignment Violation -> BLOCK
+        if intent_violation and is_critical_sink:
+            decision = SecurityDecision(
+                action=DecisionAction.BLOCK,
+                risk_level=RiskLevel.HIGH,
+                risk_score=risk_breakdown.total_score,
+                reason_code="INTENT_ALIGNMENT_VIOLATION",
+                explanation=intent_res.explanation,
+                trace_id=trace_id,
+                evidence_references=evidence_refs,
+                influencing_context_ids=influencing_ctx_ids,
+                authority_containment=authority_containment_report,
+                intent_alignment=intent_alignment_report,
+                risk_breakdown=risk_breakdown,
+                structured_explanation=structured_explanation,
+            )
+            self._emit_decision_events(tool_def, request, decision)
+            return decision
 
-        # 8. Compute Aggregate Risk Score and Render Decision
-        max_signal_score = max([s.score for s in signals], default=0.0)
-        
-        if max_signal_score >= self.guard.config.default_risk_threshold:
-            action = DecisionAction.BLOCK
-            level = RiskLevel.CRITICAL if max_signal_score >= 0.85 else RiskLevel.HIGH
-        elif max_signal_score >= 0.4:
-            action = DecisionAction.MONITOR
-            level = RiskLevel.MEDIUM
-        else:
-            action = DecisionAction.ALLOW
-            level = RiskLevel.LOW
-
+        # Rule 8e: Default Allowed / Monitored
+        action = DecisionAction.ALLOW if risk_breakdown.total_score < 0.4 else DecisionAction.MONITOR
         decision = SecurityDecision(
             action=action,
-            risk_level=level,
-            risk_score=max_signal_score,
+            risk_level=RiskLevel.LOW if action == DecisionAction.ALLOW else RiskLevel.MEDIUM,
+            risk_score=risk_breakdown.total_score,
             reason_code="POLICY_ALLOW_STANDARD" if action == DecisionAction.ALLOW else "RISK_MONITORED",
             explanation="Action permitted under standard security policy." if action == DecisionAction.ALLOW else "Action permitted under continuous security monitoring.",
             trace_id=trace_id,
             evidence_references=evidence_refs,
+            influencing_context_ids=influencing_ctx_ids,
+            authority_containment=authority_containment_report,
+            intent_alignment=intent_alignment_report,
+            risk_breakdown=risk_breakdown,
+            structured_explanation=structured_explanation,
         )
 
         self._emit_decision_events(tool_def, request, decision)
@@ -223,6 +269,8 @@ class PolicyEvaluator:
                 "tool_name": tool_def.name,
                 "risk_score": decision.risk_score,
                 "risk_level": decision.risk_level.value,
+                "authority_contained": decision.authority_containment.get("contained", True),
+                "intent_aligned": decision.intent_alignment.get("aligned", True),
             }
         )
 
@@ -237,5 +285,7 @@ class PolicyEvaluator:
                 "explanation": decision.explanation,
                 "risk_score": decision.risk_score,
                 "evidence_references": decision.evidence_references,
+                "influencing_context_ids": decision.influencing_context_ids,
+                "structured_explanation": decision.structured_explanation,
             }
         )

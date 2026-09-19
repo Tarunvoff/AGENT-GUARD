@@ -24,7 +24,7 @@ class CausalEdge(BaseModel):
     """A directed causal dependency or data-flow relationship."""
     source_id: str
     target_id: str
-    relation: str  # INITIATED, DELEGATED_TO, INGESTED, DERIVED_FROM, INVOKED, ACCESSED, GOVERNED_BY
+    relation: str  # INITIATED, DELEGATED_TO, INGESTED_OR_PROPAGATED, INVOKED, TARGETS, GOVERNED_BY
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -37,6 +37,33 @@ class CausalGraph(BaseModel):
     def to_json(self, indent: int = 2) -> str:
         """Export graph as machine-readable JSON."""
         return self.model_dump_json(indent=indent)
+
+    def get_influencing_contexts(self, tool_name_or_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Query and return all context nodes that causally influenced tool requests in this trace."""
+        context_nodes = [n for n in self.nodes if n.node_type == "CONTEXT"]
+        results: List[Dict[str, Any]] = []
+        for cn in context_nodes:
+            cid = cn.details.get("context_id") or (cn.node_id[4:] if cn.node_id.startswith("ctx_") else cn.node_id)
+            results.append({
+                "context_id": cid,
+                "label": cn.label,
+                "details": cn.details,
+                "timestamp": cn.timestamp,
+            })
+        return results
+
+    def get_propagation_chain(self) -> List[str]:
+        """Extract chronological agent propagation chain from graph nodes."""
+        agent_nodes = [n for n in self.nodes if n.node_type == "AGENT"]
+        seen = set()
+        chain = []
+        for n in agent_nodes:
+            # Extract clean agent name from label e.g. "Agent: PlannerAgent"
+            name = n.label.split("(")[0].replace("Agent:", "").strip()
+            if name not in seen:
+                seen.add(name)
+                chain.append(name)
+        return chain
 
     def render_tree(self) -> str:
         """Render a formatted human-readable causal execution tree using ASCII characters for universal terminal support."""
@@ -107,6 +134,15 @@ class TraceManager:
         if trace_id is None:
             return list(self._events)
         return [e for e in self._events if e.trace_id == trace_id]
+
+    def get_propagation_chain_for_context(self, context_id: str) -> List[str]:
+        """Return the sequence of agent IDs that propagated a specific context."""
+        events = [e for e in self._events if e.context_id == context_id or e.payload.get("parent_context_id") == context_id]
+        agents = []
+        for e in events:
+            if e.agent_id and e.agent_id not in agents:
+                agents.append(e.agent_id)
+        return agents
 
     def reconstruct_causal_graph(self, trace_id: str, guard: Optional["AgentGuard"] = None) -> CausalGraph:
         """Reconstruct the complete causal chain from stored events and registries."""
@@ -187,17 +223,20 @@ class TraceManager:
                 add_edge(delegator_node_id, delegate_node_id, "DELEGATED_TO")
                 last_entity_id = delegate_node_id
 
-            elif evt.event_type == EventType.CONTEXT_RECEIVED or evt.event_type == EventType.CONTEXT_PROPAGATED:
+            elif evt.event_type in (EventType.CONTEXT_RECEIVED, EventType.CONTEXT_PROPAGATED, EventType.CONTEXT_SANITIZED):
                 ctx_id = evt.context_id or f"ctx_{len(nodes)}"
-                taint = evt.payload.get("taint_state", "TRUSTED")
+                taint = evt.payload.get("taint_state", evt.payload.get("new_taint", "CLEAN"))
                 src = evt.payload.get("source", "external")
+                action = evt.payload.get("action", evt.event_type.value)
                 ctx_node_id = f"ctx_{ctx_id}"
+                node_details = dict(evt.payload)
+                node_details["context_id"] = ctx_id
                 
                 add_node(CausalNode(
                     node_id=ctx_node_id,
                     node_type="CONTEXT",
                     label=f"Context: {src} [Taint: {taint}]",
-                    details=evt.payload,
+                    details=node_details,
                     timestamp=evt_time_str,
                 ))
 

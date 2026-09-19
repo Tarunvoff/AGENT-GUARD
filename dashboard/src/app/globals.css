@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens ────────────────────────────────────────────────── */
+
+:root {
+  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-mono: var(--font-mono), 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Security state colors */
+  --color-allow: #10b981;
+  --color-block: #ef4444;
+  --color-hitl: #f59e0b;
+  --color-monitor: #60a5fa;
+
+  /* Trust */
+  --color-trust-high: #10b981;
+  --color-trust-medium: #60a5fa;
+  --color-trust-low: #f59e0b;
+  --color-trust-untrusted: #ef4444;
+
+  /* Background */
+  --bg-primary: #090d16;
+  --bg-secondary: #0c1119;
+  --bg-card: rgba(15, 20, 30, 0.6);
+}
+
+/* ─── Global Reset ──────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg-primary);
+  color: #e2e8f0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbars ───────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* ─── Typography ───────────────────────────────────────────────────── */
+
+.font-mono,
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+}
+
+/* ─── Security state backgrounds (scanline feel for critical) ──────── */
+
+.bg-critical-scan {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(239, 68, 68, 0.015) 2px,
+      rgba(239, 68, 68, 0.015) 4px
+    );
+}
+
+/* ─── Glass card ──────────────────────────────────────────────────── */
+
+.card-glass {
+  background: rgba(15, 20, 30, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Grid background pattern ─────────────────────────────────────── */
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── Animated connection line ─────────────────────────────────────── */
+
+@keyframes flow-right {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+.flow-line {
+  stroke-dasharray: 8 4;
+  animation: flow-right 1s linear infinite;
+}
+
+/* ─── Glow effects ────────────────────────────────────────────────── */
+
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), 0 0 40px rgba(239, 68, 68, 0.05);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), 0 0 40px rgba(16, 185, 129, 0.05);
+}
+
+.glow-sky {
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.15), 0 0 40px rgba(56, 189, 248, 0.05);
+}
+
+/* ─── React Flow custom node styles ──────────────────────────────── */
+
+.react-flow__node {
+  font-family: var(--font-sans);
+}
+
+.react-flow__edge-path {
+  stroke: #374151;
+}
+
+.react-flow__minimap {
+  background: #0c1119;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
+.react-flow__controls {
+  background: #0c1119;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
+.react-flow__controls-button {
+  background: #0c1119;
+  border-bottom: 1px solid #1f2937;
+  color: #9ca3af;
+  fill: #9ca3af;
+}
+
+.react-flow__controls-button:hover {
+  background: #111827;
+  color: #e2e8f0;
+  fill: #e2e8f0;
+}
+
+.react-flow__background {
+  background: #090d16;
+}
+
+/* ─── Recharts styles ─────────────────────────────────────────────── */
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+/* ─── Utility animations ─────────────────────────────────────────── */
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Focus ring ─────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.5);
+  outline-offset: 2px;
+}

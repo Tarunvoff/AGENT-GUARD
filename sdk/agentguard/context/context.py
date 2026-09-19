@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from agentguard.context.provenance import ContextSource, Provenance
+from agentguard.context.provenance import ContextSource, ContextTrustLevel, Provenance
 from agentguard.context.taint import TaintState
 from agentguard.tracing.correlation import generate_id
 from agentguard.tracing.events import EventType
@@ -21,8 +21,8 @@ class Context(BaseModel):
     source: ContextSource = Field(default=ContextSource.USER, description="Original source")
     source_type: str = Field(default="text", description="MIME type or semantic type")
     source_uri: Optional[str] = Field(default=None, description="URI or locator of context source")
-    trust_level: str = Field(default="trusted", description="Trust level assigned at ingestion")
-    taint_state: TaintState = Field(default=TaintState.TRUSTED, description="Current taint classification")
+    trust_level: str = Field(default="trusted", description="Trust level assigned at ingestion ('trusted', 'untrusted', 'verified')")
+    taint_state: TaintState = Field(default=TaintState.CLEAN, description="Current taint classification ('CLEAN', 'UNTRUSTED', 'TAINTED', 'UNKNOWN')")
     
     # Origin & Lineage
     originating_event_id: Optional[str] = Field(default=None, description="Originating event ID")
@@ -49,7 +49,10 @@ class Context(BaseModel):
         taint_override: Optional[TaintState] = None,
         guard: Optional["AgentGuard"] = None,
     ) -> "Context":
-        """Propagate or transform this context to another agent, recording the lineage hop."""
+        """Propagate or transform this context to another agent, recording the lineage hop.
+        
+        Taint is strictly preserved across agent hops unless explicitly sanitized.
+        """
         new_taint = taint_override or self.taint_state
         new_provenance = self.provenance.model_copy(deep=True)
         
@@ -93,3 +96,64 @@ class Context(BaseModel):
         )
 
         return derived_ctx
+
+    def sanitize(
+        self,
+        sanitizer_name: str,
+        reason: str,
+        transformed_data: Any = None,
+        new_taint: TaintState = TaintState.CLEAN,
+        guard: Optional["AgentGuard"] = None,
+    ) -> "Context":
+        """Perform an explicit, auditable sanitization operation on this context artifact."""
+        previous_taint = self.taint_state.value
+        new_provenance = self.provenance.model_copy(deep=True)
+
+        sanitized_ctx = Context(
+            context_id=generate_id("ctx"),
+            data=transformed_data if transformed_data is not None else self.data,
+            source=self.source,
+            source_type=f"sanitized:{self.source_type}",
+            source_uri=self.source_uri,
+            trust_level="verified",
+            taint_state=new_taint,
+            originating_event_id=self.originating_event_id,
+            originating_agent_id=self.originating_agent_id,
+            current_agent_id=self.current_agent_id,
+            parent_context_id=self.context_id,
+            provenance=new_provenance,
+            metadata={
+                **self.metadata,
+                "sanitized_by": sanitizer_name,
+                "sanitization_reason": reason,
+            },
+        )
+
+        event_id = None
+        if guard is not None:
+            guard.context_registry[sanitized_ctx.context_id] = sanitized_ctx
+            evt = guard.emit_event(
+                event_type=EventType.CONTEXT_SANITIZED,
+                context_id=sanitized_ctx.context_id,
+                agent_id=self.current_agent_id,
+                payload={
+                    "source_context_id": self.context_id,
+                    "resulting_context_id": sanitized_ctx.context_id,
+                    "sanitizer_name": sanitizer_name,
+                    "reason": reason,
+                    "previous_taint": previous_taint,
+                    "new_taint": new_taint.value,
+                }
+            )
+            event_id = evt.event_id
+
+        sanitized_ctx.provenance.record_sanitization(
+            sanitizer_name=sanitizer_name,
+            reason=reason,
+            previous_taint=previous_taint,
+            new_taint=new_taint.value,
+            event_id=event_id,
+            details={"source_context_id": self.context_id},
+        )
+
+        return sanitized_ctx

@@ -18,6 +18,7 @@ class EventType(str, Enum):
     CONTEXT_RECEIVED = "context.received"
     CONTEXT_GENERATED = "context.generated"
     CONTEXT_PROPAGATED = "context.propagated"
+    CONTEXT_SANITIZED = "context.sanitized"
     TOOL_REQUESTED = "tool.requested"
     TOOL_INVOKED = "tool.invoked"
     RESOURCE_ACCESS_REQUESTED = "resource.access_requested"

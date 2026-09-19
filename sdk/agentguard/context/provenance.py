@@ -18,6 +18,14 @@ class ContextSource(str, Enum):
     FILE_SYSTEM = "file_system"
 
 
+class ContextTrustLevel(str, Enum):
+    """Source trust classification (orthogonal to data taint)."""
+    TRUSTED = "trusted"
+    UNTRUSTED = "untrusted"
+    VERIFIED = "verified"
+    UNKNOWN = "unknown"
+
+
 class ProvenanceHop(BaseModel):
     """An individual hop or transformation in the lifecycle of a context artifact."""
     agent_id: Optional[str] = Field(default=None, description="Agent performing the hop/transformation")
@@ -27,11 +35,23 @@ class ProvenanceHop(BaseModel):
     details: Dict[str, Any] = Field(default_factory=dict)
 
 
+class SanitizationRecord(BaseModel):
+    """Auditable record of an explicit context sanitization transformation."""
+    sanitizer_name: str
+    reason: str
+    previous_taint: str
+    new_taint: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    event_id: Optional[str] = None
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
 class Provenance(BaseModel):
     """Complete causal history of a piece of context or data."""
     
     source: ContextSource = Field(default=ContextSource.USER, description="Original source type")
     source_uri: Optional[str] = Field(default=None, description="URI or identifier of source (e.g. mcp://weather-server, /var/log)")
+    trust_level: str = Field(default="trusted", description="Trust level of the origin source")
     originating_event_id: Optional[str] = Field(default=None, description="Initial event ID where context appeared")
     originating_agent_id: Optional[str] = Field(default=None, description="Initial agent that ingested or produced this context")
     originating_timestamp: datetime = Field(
@@ -41,6 +61,10 @@ class Provenance(BaseModel):
     hops: List[ProvenanceHop] = Field(
         default_factory=list,
         description="Chronological record of agents and actions touching this context"
+    )
+    sanitizations: List[SanitizationRecord] = Field(
+        default_factory=list,
+        description="Chronological record of auditable sanitizations"
     )
 
     def record_hop(
@@ -55,6 +79,28 @@ class Provenance(BaseModel):
             ProvenanceHop(
                 agent_id=agent_id,
                 action=action,
+                timestamp=datetime.now(timezone.utc),
+                event_id=event_id,
+                details=details or {},
+            )
+        )
+
+    def record_sanitization(
+        self,
+        sanitizer_name: str,
+        reason: str,
+        previous_taint: str,
+        new_taint: str,
+        event_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Record an explicit sanitization event."""
+        self.sanitizations.append(
+            SanitizationRecord(
+                sanitizer_name=sanitizer_name,
+                reason=reason,
+                previous_taint=previous_taint,
+                new_taint=new_taint,
                 timestamp=datetime.now(timezone.utc),
                 event_id=event_id,
                 details=details or {},

@@ -623,32 +623,34 @@ Result
 
 ---
 
-# We Deliberately Tried to Break the Defense
-
-AgentGuard includes a controlled vulnerable target.
-
-The offensive engine discovered a bypass:
-
-```mermaid
-flowchart LR
-    Atk["Attack Variant"] --> Vuln["Vulnerable Target"]
-    Vuln --> Bypass["Bypass Detected (DB=1)"]
-    Bypass --> Reg["Auto Regression Fixture"]
-    Reg --> SecReplay["Secured Engine Replay"]
-    SecReplay --> Block["Blocked (DB=0)"]
-```
-
-Instead of simply reporting the bypass, AgentGuard creates a regression:
+# WHEN THE DEFENSE FAILS
 
 ```mermaid
 flowchart TD
-    BYPASS["🚨 BYPASS DETECTED"] --> FIXTURE["📁 REGRESSION FIXTURE"]
-    FIXTURE --> REPLAY["🔄 SECURED REPLAY"]
-    REPLAY --> BLOCK["🛡️ BLOCK"]
-    BLOCK --> ZERO["Sensitive DB Calls = 0"]
+    subgraph VulnTarget ["VULNERABLE TARGET (UNSECURED)"]
+        Atk["Attack"] --> Allow["ALLOW"]
+        Allow --> Tool["Tool Executed"]
+        Tool --> DBCall["Sensitive DB Calls = 1"]
+        DBCall --> Bypass["🚨 BYPASS DETECTED"]
+    end
+    
+    subgraph AutoRegression ["AUTOMATED REGRESSION & SECURED REPLAY"]
+        Bypass --> Reg["📁 REGRESSION CREATED"]
+        Reg --> Replay["🔄 SECURED REPLAY"]
+        Replay --> Block["🛡️ BLOCK"]
+        Block --> Zero["Sensitive DB Calls = 0"]
+    end
 ```
 
-This turns an attack into a permanent security test.
+> **“And we deliberately included a vulnerable target.**
+> 
+> **We found a controlled bypass where the sensitive operation actually executed.**
+> 
+> **AgentGuard captured runtime evidence, automatically turned it into a regression, and replayed it against the secured implementation.**
+> 
+> **The secured replay blocked it and the sensitive operation went back to zero.”**
+
+### That demonstrates security engineering, not just detection.
 
 ---
 

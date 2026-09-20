@@ -1,0 +1,65 @@
+{
+  "gate_id": "gate_33aa18f6966b4c79",
+  "status": "PASSED",
+  "exit_code": 0,
+  "evaluated_at": "2026-09-20T18:45:03.800740Z",
+  "campaign_name": "phase9_continuous_security_pipeline",
+  "total_attacks_tested": 40,
+  "blocked_attacks_count": 40,
+  "bypassed_attacks_count": 0,
+  "unauthorized_db_calls": 0,
+  "open_regressions_count": 0,
+  "failed_replays_count": 0,
+  "checks": [
+    {
+      "rule_name": "zero_unauthorized_db_calls",
+      "description": "Ensures zero unauthorized sensitive sink or database calls occurred",
+      "passed": true,
+      "observed_value": 0,
+      "threshold": 0,
+      "failure_message": null
+    },
+    {
+      "rule_name": "zero_bypasses",
+      "description": "Ensures zero offensive attack variants bypassed runtime defenses",
+      "passed": true,
+      "observed_value": 0,
+      "threshold": 0,
+      "failure_message": null
+    },
+    {
+      "rule_name": "zero_open_regressions",
+      "description": "Ensures all regression artifacts have passed validation",
+      "passed": true,
+      "observed_value": 0,
+      "threshold": 0,
+      "failure_message": null
+    },
+    {
+      "rule_name": "zero_failed_replays",
+      "description": "Ensures all historical attack replays were successfully defended",
+      "passed": true,
+      "observed_value": 0,
+      "threshold": 0,
+      "failure_message": null
+    },
+    {
+      "rule_name": "minimum_block_rate",
+      "description": "Ensures block rate meets or exceeds 100.0%",
+      "passed": true,
+      "observed_value": 1.0,
+      "threshold": 1.0,
+      "failure_message": null
+    },
+    {
+      "rule_name": "minimum_posture_score",
+      "description": "Ensures security posture rating is at least 75.0",
+      "passed": true,
+      "observed_value": 98.0,
+      "threshold": 75.0,
+      "failure_message": null
+    }
+  ],
+  "summary": "CI/CD Security Gate PASSED: All 6 checks satisfied.",
+  "metadata": {}
+}

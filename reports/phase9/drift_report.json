@@ -1,0 +1,95 @@
+{
+  "total_drifts": 3,
+  "events": [
+    {
+      "drift_id": "drf_a7fe6289575f406f",
+      "category": "CONTEXT_DRIFT",
+      "severity": "HIGH",
+      "entity_id": "ctx_59eaf37bafbc4bc4",
+      "entity_type": "context",
+      "title": "Context Trust State Transition (TRUSTED -> UNTRUSTED)",
+      "description": "Context from source 'external_mcp' changed trust classification to 'UNTRUSTED'.",
+      "before_state": "TRUSTED",
+      "after_state": "UNTRUSTED",
+      "security_implication": "Taint boundary crossed. Downstream agents consuming this context must be restricted from sensitive sinks.",
+      "review_required": true,
+      "detected_at": "2026-09-20T18:45:03.619888Z",
+      "evidence_refs": []
+    },
+    {
+      "drift_id": "drf_363372b7cac94429",
+      "category": "AUTHORITY_DRIFT",
+      "severity": "HIGH",
+      "entity_id": "agt_60aeff2cd2a44742",
+      "entity_type": "agent",
+      "title": "Authority Expansion Detected on Agent 'agt_60aeff2cd2a44742'",
+      "description": "Agent granted new capabilities: ['exec_bash', 'write_db']",
+      "before_state": [
+        "read_file"
+      ],
+      "after_state": [
+        "read_file",
+        "write_db",
+        "exec_bash"
+      ],
+      "security_implication": "Agent capability boundary expanded. Verify alignment with principle of least privilege.",
+      "review_required": true,
+      "detected_at": "2026-09-20T18:45:03.620631Z",
+      "evidence_refs": []
+    },
+    {
+      "drift_id": "drf_7cf39d1b76304bc3",
+      "category": "ACCESS_DRIFT",
+      "severity": "HIGH",
+      "entity_id": "agt_220dca9e87ac4fe2",
+      "entity_type": "agent",
+      "title": "New Resource Target Attempted: 'fin_export_api'",
+      "description": "Agent 'agt_220dca9e87ac4fe2' attempted access to 'fin_export_api' for the first time.",
+      "before_state": [
+        "local_fs",
+        "quarterly_reports"
+      ],
+      "after_state": [
+        "local_fs",
+        "quarterly_reports",
+        "fin_export_api"
+      ],
+      "security_implication": "Anomalous resource access path. Potential lateral movement or prompt injection target.",
+      "review_required": true,
+      "detected_at": "2026-09-20T18:45:03.620651Z",
+      "evidence_refs": []
+    }
+  ],
+  "agent_baselines": {
+    "agt_a1cdcb142ae84e75": {
+      "agent_id": "agt_a1cdcb142ae84e75",
+      "normal_tools": [
+        "execute_database_query"
+      ],
+      "normal_resources": [
+        "dw_customers_prod"
+      ],
+      "normal_max_depth": 2,
+      "normal_context_sources": [
+        "user"
+      ],
+      "sample_count": 5,
+      "last_updated": "2026-09-20T18:45:03.618452Z"
+    },
+    "agt_970a2aafa2e04a06": {
+      "agent_id": "agt_970a2aafa2e04a06",
+      "normal_tools": [
+        "generate_summary"
+      ],
+      "normal_resources": [
+        "local_fs"
+      ],
+      "normal_max_depth": 2,
+      "normal_context_sources": [
+        "user"
+      ],
+      "sample_count": 5,
+      "last_updated": "2026-09-20T18:45:03.618474Z"
+    }
+  }
+}

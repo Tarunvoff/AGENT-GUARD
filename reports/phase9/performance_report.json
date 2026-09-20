@@ -1,0 +1,8 @@
+{
+  "mean_enforcement_latency_ms": 1.26,
+  "p95_enforcement_latency_ms": 1.7639999999999998,
+  "ai_secura_availability_pct": 100.0,
+  "apiris_availability_pct": 100.0,
+  "policy_engine_availability_pct": 100.0,
+  "total_events_processed": 2
+}

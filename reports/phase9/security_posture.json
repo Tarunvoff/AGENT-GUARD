@@ -1,0 +1,44 @@
+{
+  "snapshot_id": "pos_snap_5e95796735fa4485",
+  "timestamp": "2026-09-20T18:45:03.800623Z",
+  "rating": "HEALTHY",
+  "security_score": 98.0,
+  "metrics": {
+    "unauthorized_access_attempts": 1,
+    "actual_unauthorized_executions": 0,
+    "tainted_sensitive_requests": 1,
+    "authority_violations": 0,
+    "intent_violations": 0,
+    "blocked_actions": 1,
+    "hitl_actions": 0,
+    "allowed_actions": 1,
+    "high_risk_agents_count": 1,
+    "untrusted_context_crossings": 1,
+    "sensitive_resource_exposures": 2,
+    "open_regressions": 0,
+    "failed_secured_replays": 0,
+    "offensive_validation_failures": 0,
+    "ai_secura_availability_pct": 100.0,
+    "apiris_availability_pct": 100.0,
+    "policy_engine_availability_pct": 100.0,
+    "mean_enforcement_latency_ms": 1.26,
+    "p95_enforcement_latency_ms": 1.7639999999999998
+  },
+  "findings": [
+    {
+      "finding_id": "fnd_decab2d8ab634682",
+      "category": "taint_exposure",
+      "severity": "MEDIUM",
+      "title": "1 Tainted Context Request(s) to Sensitive Sinks",
+      "description": "Agents attempted to pass untrusted/tainted context to sensitive resources.",
+      "affected_entities": [],
+      "evidence_refs": [],
+      "remediation_advice": "Inspect context provenance chains and verify input sanitization boundaries.",
+      "created_at": "2026-09-20T18:45:03.800607Z"
+    }
+  ],
+  "active_incidents_count": 1,
+  "total_events_evaluated": 2,
+  "environment": "production",
+  "metadata": {}
+}

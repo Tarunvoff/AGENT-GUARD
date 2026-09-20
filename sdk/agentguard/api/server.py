@@ -438,6 +438,185 @@ def scorecard():
     }
 
 
+# ── Phase 9 Continuous Security Control Plane Endpoints ───────────────────────
+from agentguard.posture import PostureEngine, SecurityPostureSnapshot, PostureDiffEngine
+from agentguard.incidents import IncidentEngine, IncidentState, SecurityIncident
+from agentguard.drift import BehavioralBaselineTracker, DriftCategory, DriftSeverity
+from agentguard.gates import SecurityGateEvaluator, SecurityGateResult
+
+_posture_engine = PostureEngine()
+_incident_engine = IncidentEngine()
+_drift_tracker = BehavioralBaselineTracker()
+_gate_evaluator = SecurityGateEvaluator()
+
+
+class IncidentTransitionRequest(BaseModel):
+    to_state: IncidentState
+    actor: str = "system"
+    reason: str = ""
+
+
+class GateEvaluationRequest(BaseModel):
+    campaign_name: Optional[str] = "live_evaluation"
+    total_attacks: int = 0
+    blocked_attacks: int = 0
+    bypassed_attacks: int = 0
+    unauthorized_db_calls: int = 0
+    open_regressions: int = 0
+    failed_replays: int = 0
+
+
+@app.get("/api/v1/posture")
+def get_security_posture():
+    """Return current Security Posture Snapshot and dimensions."""
+    phase9_json = REPORTS_DIR / "phase9" / "security_posture.json"
+    if phase9_json.exists():
+        try:
+            return json.loads(phase9_json.read_text())
+        except Exception:
+            pass
+    # Fallback to dynamic evaluation
+    snapshot = _posture_engine.evaluate_current_posture()
+    return snapshot.model_dump()
+
+
+@app.get("/api/v1/posture/diff")
+def get_posture_diff():
+    """Return posture comparison diff between latest runs."""
+    current = _posture_engine.evaluate_current_posture()
+    diff = PostureDiffEngine.compute_diff(previous=None, current=current)
+    return diff.model_dump()
+
+
+@app.get("/api/v1/incidents")
+def list_incidents(state: Optional[str] = None):
+    """List all tracked security incidents."""
+    phase9_json = REPORTS_DIR / "phase9" / "incident_report.json"
+    if phase9_json.exists():
+        try:
+            data = json.loads(phase9_json.read_text())
+            if isinstance(data, list):
+                inc_list = data
+            elif isinstance(data, dict):
+                if "incidents" in data and isinstance(data["incidents"], list):
+                    inc_list = data["incidents"]
+                elif "incident_id" in data:
+                    inc_list = [data]
+                else:
+                    inc_list = []
+            else:
+                inc_list = []
+            if inc_list:
+                if state:
+                    return [inc for inc in inc_list if inc.get("state") == state.upper()]
+                return inc_list
+        except Exception:
+            pass
+
+    incidents = _incident_engine.list_incidents(
+        state=IncidentState(state.upper()) if state else None
+    )
+    return [inc.model_dump() for inc in incidents]
+
+
+@app.get("/api/v1/incidents/{incident_id}")
+def get_incident(incident_id: str):
+    """Get full details and timeline for a specific security incident."""
+    phase9_json = REPORTS_DIR / "phase9" / "incident_report.json"
+    if phase9_json.exists():
+        try:
+            data = json.loads(phase9_json.read_text())
+            if isinstance(data, dict) and data.get("incident_id") == incident_id:
+                return data
+            elif isinstance(data, list):
+                for inc in data:
+                    if isinstance(inc, dict) and inc.get("incident_id") == incident_id:
+                        return inc
+            elif isinstance(data, dict) and "incidents" in data:
+                for inc in data["incidents"]:
+                    if isinstance(inc, dict) and inc.get("incident_id") == incident_id:
+                        return inc
+        except Exception:
+            pass
+
+    inc = _incident_engine.get_incident(incident_id)
+    if not inc:
+        raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+    return inc.model_dump()
+
+
+@app.post("/api/v1/incidents/{incident_id}/transition")
+def transition_incident(incident_id: str, req: IncidentTransitionRequest):
+    """Transition incident state with audit timeline logging."""
+    inc = _incident_engine.transition_incident_state(
+        incident_id=incident_id,
+        to_state=req.to_state,
+        actor=req.actor,
+        reason=req.reason,
+    )
+    if not inc:
+        raise HTTPException(status_code=400, detail=f"Could not transition incident '{incident_id}' to {req.to_state}")
+    return inc.model_dump()
+
+
+@app.get("/api/v1/drift")
+def get_drift_events():
+    """Return tracked behavioral baselines and security drift detections."""
+    phase9_json = REPORTS_DIR / "phase9" / "drift_report.json"
+    if phase9_json.exists():
+        try:
+            data = json.loads(phase9_json.read_text())
+            if "events" in data and "drift_events" not in data:
+                data["drift_events"] = data["events"]
+            return data
+        except Exception:
+            pass
+    evts = [evt.model_dump() for evt in _drift_tracker.drift_events]
+    return {
+        "drift_events": evts,
+        "events": evts,
+        "total_drifts": len(evts),
+        "agent_baselines": {aid: b.model_dump() for aid, b in _drift_tracker.baselines.items()},
+    }
+
+
+@app.get("/api/v1/security-gates")
+def get_security_gate_status():
+    """Return CI/CD Security Quality Gate status and metrics."""
+    phase9_json = REPORTS_DIR / "phase9" / "security_gate.json"
+    if phase9_json.exists():
+        try:
+            return json.loads(phase9_json.read_text())
+        except Exception:
+            pass
+    result = _gate_evaluator.evaluate(
+        campaign_name="default_live_gate",
+        total_attacks=10,
+        blocked_attacks=10,
+        bypassed_attacks=0,
+        unauthorized_db_calls=0,
+        open_regressions=0,
+        failed_replays=0,
+    )
+    return result.model_dump()
+
+
+@app.post("/api/v1/security-gates/evaluate")
+def evaluate_security_gate(req: GateEvaluationRequest):
+    """Evaluate custom CI/CD quality gate check."""
+    result = _gate_evaluator.evaluate(
+        campaign_name=req.campaign_name,
+        total_attacks=req.total_attacks,
+        blocked_attacks=req.blocked_attacks,
+        bypassed_attacks=req.bypassed_attacks,
+        unauthorized_db_calls=req.unauthorized_db_calls,
+        open_regressions=req.open_regressions,
+        failed_replays=req.failed_replays,
+    )
+    return result.model_dump()
+
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

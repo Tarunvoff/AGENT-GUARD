@@ -1,0 +1,199 @@
+{
+  "demo_title": "AgentGuard Phase 9 Continuous Security Control Plane",
+  "completed_at": "2026-09-20T18:45:03.836005+00:00",
+  "total_steps": 20,
+  "gate_exit_code": 0,
+  "timeline": [
+    {
+      "step": 1,
+      "name": "Initialize Control Plane",
+      "timestamp": "2026-09-20T18:45:03.617639+00:00",
+      "details": {
+        "enforcement_mode": "STRICT"
+      }
+    },
+    {
+      "step": 2,
+      "name": "Register Agents",
+      "timestamp": "2026-09-20T18:45:03.618261+00:00",
+      "details": {
+        "agents": [
+          "Orchestrator Agent v2",
+          "Data Processing Agent",
+          "Report Generation Agent",
+          "Financial Analyst Agent",
+          "Escalation Handler Agent"
+        ]
+      }
+    },
+    {
+      "step": 3,
+      "name": "Define Tools",
+      "timestamp": "2026-09-20T18:45:03.618346+00:00",
+      "details": {
+        "tools": [
+          "execute_database_query",
+          "export_financial_data"
+        ]
+      }
+    },
+    {
+      "step": 4,
+      "name": "Establish Posture Baseline",
+      "timestamp": "2026-09-20T18:45:03.618432+00:00",
+      "details": {
+        "score": 100.0,
+        "rating": "HEALTHY"
+      }
+    },
+    {
+      "step": 5,
+      "name": "Train Behavioral Baselines",
+      "timestamp": "2026-09-20T18:45:03.618488+00:00",
+      "details": {
+        "data_agent_samples": 5,
+        "report_agent_samples": 5
+      }
+    },
+    {
+      "step": 6,
+      "name": "Authorized Positive Control",
+      "timestamp": "2026-09-20T18:45:03.619770+00:00",
+      "details": {
+        "decision": "ALLOW",
+        "db_calls": 1,
+        "latency_ms": 1.2647999974433333
+      }
+    },
+    {
+      "step": 7,
+      "name": "Ingest Untrusted Context",
+      "timestamp": "2026-09-20T18:45:03.619863+00:00",
+      "details": {
+        "context_id": "ctx_59eaf37bafbc4bc4",
+        "source": "external_mcp",
+        "taint": "UNTRUSTED"
+      }
+    },
+    {
+      "step": 8,
+      "name": "Context Drift Detection",
+      "timestamp": "2026-09-20T18:45:03.619899+00:00",
+      "details": {
+        "drift_id": "drf_a7fe6289575f406f"
+      }
+    },
+    {
+      "step": 9,
+      "name": "Block Tainted Request",
+      "timestamp": "2026-09-20T18:45:03.620399+00:00",
+      "details": {
+        "action": "BLOCK",
+        "sensitive_db_calls": 0,
+        "blocked": true
+      }
+    },
+    {
+      "step": 10,
+      "name": "Create Security Incident",
+      "timestamp": "2026-09-20T18:45:03.620469+00:00",
+      "details": {
+        "incident_id": "inc_8d5c2d08f4b649eb",
+        "state": "DETECTED"
+      }
+    },
+    {
+      "step": 11,
+      "name": "Response Orchestration",
+      "timestamp": "2026-09-20T18:45:03.620529+00:00",
+      "details": {
+        "quarantined_context": "ctx_59eaf37bafbc4bc4",
+        "revoked_capabilities": [
+          "read_db"
+        ]
+      }
+    },
+    {
+      "step": 12,
+      "name": "Incident Progression",
+      "timestamp": "2026-09-20T18:45:03.620606+00:00",
+      "details": {
+        "current_state": "CONTAINED",
+        "milestones": 4
+      }
+    },
+    {
+      "step": 13,
+      "name": "Detect Authority & Access Drift",
+      "timestamp": "2026-09-20T18:45:03.620657+00:00",
+      "details": {
+        "auth_drift": "drf_363372b7cac94429",
+        "access_drift": "drf_7cf39d1b76304bc3"
+      }
+    },
+    {
+      "step": 14,
+      "name": "Offensive Validation",
+      "timestamp": "2026-09-20T18:45:03.794885+00:00",
+      "details": {
+        "secured_blocked": 40,
+        "secured_total": 40,
+        "vulnerable_bypasses": 0
+      }
+    },
+    {
+      "step": 15,
+      "name": "Generate Regression Fixture",
+      "timestamp": "2026-09-20T18:45:03.799528+00:00",
+      "details": {
+        "fixture": "atk_reg_phase9_bypass_demo"
+      }
+    },
+    {
+      "step": 16,
+      "name": "Secured Replay",
+      "timestamp": "2026-09-20T18:45:03.800350+00:00",
+      "details": {
+        "passed": true,
+        "db_calls": 0
+      }
+    },
+    {
+      "step": 17,
+      "name": "Close Incident",
+      "timestamp": "2026-09-20T18:45:03.800406+00:00",
+      "details": {
+        "state": "CLOSED"
+      }
+    },
+    {
+      "step": 18,
+      "name": "Restore Authority",
+      "timestamp": "2026-09-20T18:45:03.800449+00:00",
+      "details": {
+        "restored": [
+          "read_db"
+        ]
+      }
+    },
+    {
+      "step": 19,
+      "name": "Compute Posture Diff",
+      "timestamp": "2026-09-20T18:45:03.800690+00:00",
+      "details": {
+        "final_score": 98.0,
+        "rating": "HEALTHY",
+        "diff_summary": "Security posture degraded by -2.0 pts (HEALTHY -> HEALTHY). Discovered 1 new finding(s)."
+      }
+    },
+    {
+      "step": 20,
+      "name": "CI/CD Security Gate",
+      "timestamp": "2026-09-20T18:45:03.800778+00:00",
+      "details": {
+        "status": "PASSED",
+        "exit_code": 0
+      }
+    }
+  ]
+}

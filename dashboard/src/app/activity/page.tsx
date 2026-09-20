@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { DEMO_EVENTS, DEMO_AGENTS } from '@/data/demo';
-import { DecisionBadge, TrustBadge, SeverityBadge } from '@/components/ui/security';
-import { Activity, Pause, Play, Filter, Terminal, Shield, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { DEMO_EVENTS } from '@/data/demo';
+import { DecisionBadge } from '@/components/ui/security';
+import { Activity, Pause, Play, Filter, Terminal, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 
 const DECISION_ICONS: Record<string, React.ElementType> = {
   ALLOW: CheckCircle2,
@@ -20,10 +20,10 @@ const DECISION_COLORS: Record<string, string> = {
 };
 
 export default function ActivityPage() {
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState<boolean>(false);
   const [filter, setFilter] = useState<string>('all');
-  const [events, setEvents] = useState(DEMO_EVENTS.slice(0, 20));
-  const [tick, setTick] = useState(0);
+  const [events, setEvents] = useState<any[]>(DEMO_EVENTS.slice(0, 20));
+  const [tick, setTick] = useState<number>(0);
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,12 +40,12 @@ export default function ActivityPage() {
     return () => clearInterval(interval);
   }, [paused]);
 
-  const filtered = filter === 'all' ? events : events.filter(e => e.decision === filter);
+  const filtered = filter === 'all' ? events : events.filter((e: any) => e.decision === filter);
 
   const stats = {
-    ALLOW: events.filter(e => e.decision === 'ALLOW').length,
-    BLOCK: events.filter(e => e.decision === 'BLOCK').length,
-    HITL: events.filter(e => e.decision === 'HITL').length,
+    ALLOW: events.filter((e: any) => e.decision === 'ALLOW').length,
+    BLOCK: events.filter((e: any) => e.decision === 'BLOCK').length,
+    HITL: events.filter((e: any) => e.decision === 'HITL').length,
     total: events.length,
   };
 
@@ -65,7 +65,7 @@ export default function ActivityPage() {
           <span className="text-xs text-zinc-400">{paused ? 'PAUSED' : 'LIVE'}</span>
           <button
             onClick={() => setPaused(p => !p)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700/50 text-xs text-zinc-300 hover:text-white hover:bg-zinc-700/80 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700/50 text-xs text-zinc-300 hover:text-white hover:bg-zinc-700/80 transition-colors cursor-pointer"
           >
             {paused ? <Play size={12} /> : <Pause size={12} />}
             {paused ? 'Resume' : 'Pause'}
@@ -95,7 +95,7 @@ export default function ActivityPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-3 py-1 text-[11px] rounded font-medium uppercase tracking-wider transition-colors ${
+            className={`px-3 py-1 text-[11px] rounded font-medium uppercase tracking-wider transition-colors cursor-pointer ${
               filter === f ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
@@ -106,33 +106,37 @@ export default function ActivityPage() {
 
       {/* Live Feed */}
       <div ref={feedRef} className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
-        {filtered.map((evt, i) => {
-          const DecIcon = DECISION_ICONS[evt.decision] || Activity;
+        {filtered.map((evt: any, i: number) => {
+          const decisionKey = evt.decision || 'MONITOR';
+          const DecIcon = DECISION_ICONS[decisionKey] || Activity;
           const isNew = i === 0 && !paused;
+          const toolLabel = evt.tool || evt.tool_name || (evt.event_data?.tool_name) || 'tool_invocation';
+          const actionLabel = evt.action || evt.reason || evt.event_data?.reason;
+
           return (
             <div
-              key={evt.event_id}
+              key={evt.event_id || i}
               className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
                 isNew
                   ? 'bg-sky-500/5 border-sky-500/20 animate-pulse-slow'
                   : 'bg-zinc-900/30 border-zinc-800/40 hover:border-zinc-700/50'
               }`}
             >
-              <DecIcon size={14} className={`mt-0.5 flex-shrink-0 ${DECISION_COLORS[evt.decision] || 'text-zinc-400'}`} />
+              <DecIcon size={14} className={`mt-0.5 flex-shrink-0 ${DECISION_COLORS[decisionKey] || 'text-zinc-400'}`} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono text-zinc-300 truncate">{evt.tool || 'unknown_tool'}</span>
-                  <DecisionBadge decision={evt.decision as any} />
+                  <span className="text-xs font-mono text-zinc-300 truncate">{toolLabel}</span>
+                  <DecisionBadge decision={decisionKey as any} />
                   {evt.agent_id && (
                     <span className="text-[10px] text-zinc-500 bg-zinc-800/60 px-2 py-0.5 rounded font-mono">{evt.agent_id}</span>
                   )}
                 </div>
-                {evt.action && (
-                  <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{evt.action}</div>
+                {actionLabel && (
+                  <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{actionLabel}</div>
                 )}
               </div>
               <div className="text-[10px] text-zinc-600 font-mono flex-shrink-0">
-                {new Date(evt.timestamp).toLocaleTimeString()}
+                {evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : '--:--:--'}
               </div>
             </div>
           );

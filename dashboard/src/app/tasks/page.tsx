@@ -1,10 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { DEMO_TASKS } from '@/data/demo';
-import { DecisionBadge, TrustBadge, SeverityBadge } from '@/components/ui/security';
 import { CheckSquare, Clock, CheckCircle2, XCircle, AlertTriangle, ArrowRight, GitBranch } from 'lucide-react';
 import Link from 'next/link';
+
+interface TaskItem {
+  task_id: string;
+  agent_id: string;
+  description: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'BLOCKED' | 'PENDING' | 'FAILED' | string;
+  started_at: string;
+  completed_at?: string | null;
+  actions_taken: number;
+  actions_blocked: number;
+  tool_calls?: string[];
+  delegated_to?: string[];
+}
 
 const STATUS_COLORS: Record<string, string> = {
   COMPLETED: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
@@ -22,49 +33,92 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
   FAILED: XCircle,
 };
 
+const INITIAL_TASKS: TaskItem[] = [
+  {
+    task_id: 'task_001',
+    agent_id: 'orchestrator_v2',
+    description: 'Analyze Q3 financial reports and generate summary',
+    status: 'COMPLETED',
+    started_at: '2026-09-19T08:00:00Z',
+    completed_at: '2026-09-19T08:05:32Z',
+    actions_taken: 12,
+    actions_blocked: 0,
+    tool_calls: ['read_file', 'query_db', 'generate_summary'],
+    delegated_to: ['analyst_agent'],
+  },
+  {
+    task_id: 'task_002',
+    agent_id: 'data_agent',
+    description: 'Export customer PII to external S3 bucket',
+    status: 'BLOCKED',
+    started_at: '2026-09-19T09:11:00Z',
+    completed_at: null,
+    actions_taken: 3,
+    actions_blocked: 1,
+    tool_calls: ['read_db', 'upload_s3'],
+    delegated_to: [],
+  },
+  {
+    task_id: 'task_003',
+    agent_id: 'orchestrator_v2',
+    description: 'Generate weekly security posture report',
+    status: 'IN_PROGRESS',
+    started_at: '2026-09-19T11:00:00Z',
+    completed_at: null,
+    actions_taken: 7,
+    actions_blocked: 0,
+    tool_calls: ['query_logs', 'aggregate_metrics', 'format_report'],
+    delegated_to: ['report_agent'],
+  },
+  {
+    task_id: 'task_004',
+    agent_id: 'escalation_agent',
+    description: 'Escalate billing dispute to supervisor with customer data',
+    status: 'BLOCKED',
+    started_at: '2026-09-19T10:30:00Z',
+    completed_at: null,
+    actions_taken: 2,
+    actions_blocked: 2,
+    tool_calls: ['read_customer', 'send_email'],
+    delegated_to: [],
+  },
+  {
+    task_id: 'task_005',
+    agent_id: 'report_agent',
+    description: 'Compile monthly compliance audit log',
+    status: 'COMPLETED',
+    started_at: '2026-09-19T07:00:00Z',
+    completed_at: '2026-09-19T07:22:11Z',
+    actions_taken: 34,
+    actions_blocked: 0,
+    tool_calls: ['read_audit_log', 'validate_policies', 'export_pdf'],
+    delegated_to: [],
+  },
+  {
+    task_id: 'task_006',
+    agent_id: 'data_agent',
+    description: 'Sync internal user preferences database',
+    status: 'COMPLETED',
+    started_at: '2026-09-19T06:00:00Z',
+    completed_at: '2026-09-19T06:04:55Z',
+    actions_taken: 8,
+    actions_blocked: 0,
+    tool_calls: ['read_prefs', 'write_prefs'],
+    delegated_to: [],
+  },
+];
+
 export default function TasksPage() {
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState<string>('all');
+  const tasks = INITIAL_TASKS;
 
-  const tasks = DEMO_TASKS || [
-    {
-      task_id: 'task_001', agent_id: 'orchestrator_v2', description: 'Analyze Q3 financial reports and generate summary', status: 'COMPLETED',
-      started_at: '2026-09-19T08:00:00Z', completed_at: '2026-09-19T08:05:32Z', actions_taken: 12, actions_blocked: 0,
-      tool_calls: ['read_file', 'query_db', 'generate_summary'], delegated_to: ['analyst_agent'],
-    },
-    {
-      task_id: 'task_002', agent_id: 'data_agent', description: 'Export customer PII to external S3 bucket', status: 'BLOCKED',
-      started_at: '2026-09-19T09:11:00Z', completed_at: null, actions_taken: 3, actions_blocked: 1,
-      tool_calls: ['read_db', 'upload_s3'], delegated_to: [],
-    },
-    {
-      task_id: 'task_003', agent_id: 'orchestrator_v2', description: 'Generate weekly security posture report', status: 'IN_PROGRESS',
-      started_at: '2026-09-19T11:00:00Z', completed_at: null, actions_taken: 7, actions_blocked: 0,
-      tool_calls: ['query_logs', 'aggregate_metrics', 'format_report'], delegated_to: ['report_agent'],
-    },
-    {
-      task_id: 'task_004', agent_id: 'escalation_agent', description: 'Escalate billing dispute to supervisor with customer data', status: 'BLOCKED',
-      started_at: '2026-09-19T10:30:00Z', completed_at: null, actions_taken: 2, actions_blocked: 2,
-      tool_calls: ['read_customer', 'send_email'], delegated_to: [],
-    },
-    {
-      task_id: 'task_005', agent_id: 'report_agent', description: 'Compile monthly compliance audit log', status: 'COMPLETED',
-      started_at: '2026-09-19T07:00:00Z', completed_at: '2026-09-19T07:22:11Z', actions_taken: 34, actions_blocked: 0,
-      tool_calls: ['read_audit_log', 'validate_policies', 'export_pdf'], delegated_to: [],
-    },
-    {
-      task_id: 'task_006', agent_id: 'data_agent', description: 'Sync internal user preferences database', status: 'COMPLETED',
-      started_at: '2026-09-19T06:00:00Z', completed_at: '2026-09-19T06:04:55Z', actions_taken: 8, actions_blocked: 0,
-      tool_calls: ['read_prefs', 'write_prefs'], delegated_to: [],
-    },
-  ];
-
-  const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
+  const filtered = filter === 'all' ? tasks : tasks.filter((t) => t.status === filter);
 
   const counts = {
     total: tasks.length,
-    COMPLETED: tasks.filter(t => t.status === 'COMPLETED').length,
-    IN_PROGRESS: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-    BLOCKED: tasks.filter(t => t.status === 'BLOCKED').length,
+    COMPLETED: tasks.filter((t) => t.status === 'COMPLETED').length,
+    IN_PROGRESS: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
+    BLOCKED: tasks.filter((t) => t.status === 'BLOCKED').length,
   };
 
   return (
@@ -86,7 +140,7 @@ export default function TasksPage() {
           { label: 'Completed', value: counts.COMPLETED, color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
           { label: 'In Progress', value: counts.IN_PROGRESS, color: 'text-sky-400', border: 'border-sky-500/20', bg: 'bg-sky-500/5' },
           { label: 'Blocked', value: counts.BLOCKED, color: 'text-red-400', border: 'border-red-500/20', bg: 'bg-red-500/5' },
-        ].map(s => (
+        ].map((s) => (
           <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} p-4 text-center`}>
             <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">{s.label}</div>
             <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.value}</div>
@@ -96,11 +150,14 @@ export default function TasksPage() {
 
       {/* Filters */}
       <div className="flex gap-2">
-        {['all', 'COMPLETED', 'IN_PROGRESS', 'BLOCKED', 'PENDING'].map(f => (
-          <button key={f} onClick={() => setFilter(f)}
+        {['all', 'COMPLETED', 'IN_PROGRESS', 'BLOCKED', 'PENDING'].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
             className={`px-2.5 py-1 text-[11px] rounded font-medium uppercase tracking-wider transition-colors ${
               filter === f ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'
-            }`}>
+            }`}
+          >
             {f}
           </button>
         ))}
@@ -108,7 +165,7 @@ export default function TasksPage() {
 
       {/* Task List */}
       <div className="space-y-3">
-        {filtered.map(task => {
+        {filtered.map((task) => {
           const StatusIcon = STATUS_ICONS[task.status] || Clock;
           const statusClass = STATUS_COLORS[task.status] || 'text-zinc-400 bg-zinc-800/40 border-zinc-700/30';
           return (

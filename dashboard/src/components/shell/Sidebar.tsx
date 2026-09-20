@@ -34,6 +34,7 @@ const NAV: NavItem[] = [
       { label: 'Access Matrix', href: '/access/matrix', icon: Grid },
       { label: 'Context & Provenance', href: '/context', icon: FileText },
       { label: 'Tool / MCP Security', href: '/tools', icon: Wrench },
+      { label: 'Attack & Defense Lab', href: '/demo', icon: Target, badge: 'LIVE', badgeColor: 'bg-sky-600' },
     ],
   },
   {
@@ -41,7 +42,8 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Attack Graph', href: '/attack-graph', icon: Network },
       { label: 'Trace Explorer', href: '/traces', icon: Search },
-      { label: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: '2', badgeColor: 'bg-red-500' },
+      { label: 'Behavioral Drift', href: '/drift', icon: Activity, badge: 'P9', badgeColor: 'bg-violet-600' },
+      { label: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 'P9', badgeColor: 'bg-violet-600' },
       { label: 'Forensics', href: '/forensics', icon: Microscope },
       { label: 'Attack Campaigns', href: '/campaigns', icon: Swords },
       { label: 'Regressions', href: '/regressions', icon: RotateCcw },
@@ -54,6 +56,8 @@ const NAV: NavItem[] = [
       { label: 'AI Secura', href: '/ai-secura', icon: Brain },
       { label: 'APIRIS', href: '/apiris', icon: Zap },
       { label: 'Offensive Validation', href: '/offensive', icon: FlaskConical },
+      { label: 'Security Posture', href: '/posture', icon: Eye, badge: 'P9', badgeColor: 'bg-violet-600' },
+      { label: 'Security Gates', href: '/security-gates', icon: Lock, badge: 'P9', badgeColor: 'bg-violet-600' },
     ],
   },
   {

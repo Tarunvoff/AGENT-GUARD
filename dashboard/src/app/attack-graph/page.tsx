@@ -93,10 +93,10 @@ const nodeTypes = { graphNode: GraphNode };
 // ─── Attack Graph Page ────────────────────────────────────────────────────
 
 export default function AttackGraphPage() {
-  const [nodes, , onNodesChange] = useNodesState(
+  const [nodes, , onNodesChange] = useNodesState<any>(
     ATTACK_FLOW_NODES.map(n => ({ ...n, type: 'graphNode' }))
   );
-  const [edges, , onEdgesChange] = useEdgesState(
+  const [edges, , onEdgesChange] = useEdgesState<any>(
     ATTACK_FLOW_EDGES.map(e => ({
       ...e,
       style: {
@@ -109,7 +109,7 @@ export default function AttackGraphPage() {
       markerEnd: { type: 'arrowclosed' as any, color: e.animated ? '#ef4444' : '#374151' },
     }))
   );
-  const [selected, setSelected] = useState<Node | null>(null);
+  const [selected, setSelected] = useState<any | null>(null);
 
   return (
     <div className="h-screen flex flex-col bg-[#090d16]">

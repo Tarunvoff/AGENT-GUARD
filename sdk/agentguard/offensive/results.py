@@ -27,6 +27,11 @@ class ExecutionEvidence(BaseModel):
     taint_state: str = Field(default="CLEAN", description="Observed taint state at the tool sink")
     causal_trace_preserved: bool = Field(default=True, description="Was causal correlation preserved across the flow?")
 
+    @property
+    def unauthorized_db_calls(self) -> int:
+        return self.sensitive_db_calls
+
+
 
 class OffensiveAttackResult(BaseModel):
     """Comprehensive auditable record of an offensive validation run."""

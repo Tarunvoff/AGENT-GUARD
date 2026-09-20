@@ -1,5 +1,5 @@
 {
-  "campaign_id": "camp_3aef53335bb54bd6",
+  "campaign_id": "camp_332da771f7374055",
   "target_id": "agentguard-demo",
   "total_attacks": 3,
   "attacks_blocked": 3,
@@ -7,6 +7,6 @@
   "block_rate_pct": 100.0,
   "sensitive_actions_prevented": 3,
   "sensitive_actions_executed": 0,
-  "mean_latency_ms": 0.64,
-  "p95_latency_ms": 0.77
+  "mean_latency_ms": 0.66,
+  "p95_latency_ms": 0.81
 }

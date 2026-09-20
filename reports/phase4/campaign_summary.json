@@ -1,5 +1,5 @@
 {
-  "campaign_id": "camp_3aef53335bb54bd6",
+  "campaign_id": "camp_332da771f7374055",
   "name": "CLI Validation Campaign",
   "target_id": "agentguard-demo",
   "total_attacks": 3,
@@ -14,8 +14,8 @@
   "empirical_prevention_rate": 1.0,
   "block_rate_pct": 100.0,
   "sensitive_prevention_rate_pct": 100.0,
-  "mean_latency_ms": 0.64,
-  "p95_latency_ms": 0.77,
+  "mean_latency_ms": 0.66,
+  "p95_latency_ms": 0.81,
   "duration_ms": 0.0,
   "campaign_seed": null,
   "max_mutation_depth": 0,
@@ -33,5 +33,5 @@
   "defense_reasons_breakdown": {
     "TAINTED_CONTEXT_INTO_SENSITIVE_SINK": 3
   },
-  "timestamp": "2026-09-19T11:33:42.141279Z"
+  "timestamp": "2026-09-20T17:49:43.873832Z"
 }

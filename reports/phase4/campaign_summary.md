@@ -1,12 +1,12 @@
 # AgentGuard Offensive Validation Campaign Report
 
-- **Campaign ID**: `camp_3aef53335bb54bd6`
+- **Campaign ID**: `camp_332da771f7374055`
 - **Target System**: `agentguard-demo`
 - **Total Attacks Executed**: 3
 - **Blocked Attacks**: 3 (100.0%)
 - **Bypassed Attacks**: 0
 - **Sensitive Database Executions**: 0
-- **Mean Latency**: 0.64 ms
+- **Mean Latency**: 0.66 ms
 
 ## Attack Coverage Breakdown
 

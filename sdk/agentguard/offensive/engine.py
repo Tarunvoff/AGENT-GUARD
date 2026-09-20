@@ -448,3 +448,17 @@ class OffensiveEngine:
         files["summary_md"] = md_path
 
         return files
+
+    def run_attack_suite(
+        self,
+        attacks: List[AttackCase],
+        target: Optional[AttackTarget] = None,
+    ) -> List[OffensiveAttackResult]:
+        """Execute a batch list of attacks against the specified target."""
+        results: List[OffensiveAttackResult] = []
+        for atk in attacks:
+            res = self.execute_attack(atk, target=target)
+            results.append(res)
+        return results
+
+

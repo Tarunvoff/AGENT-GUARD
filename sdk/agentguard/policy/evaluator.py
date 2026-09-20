@@ -62,9 +62,10 @@ class PolicyEvaluator:
             if c.context_id and c.context_id not in evidence_refs:
                 evidence_refs.append(c.context_id)
 
-        has_tainted_context = any(c.taint_state == TaintState.TAINTED for c in active_contexts)
-        has_untrusted_origin = any(c.source.value in ("external_mcp", "external_api") or c.trust_level == "untrusted" for c in active_contexts)
+        has_tainted_context = any(c.taint_state in (TaintState.TAINTED, TaintState.UNTRUSTED) for c in active_contexts)
+        has_untrusted_origin = any(c.source.value in ("external_mcp", "external_api") or c.trust_level == "untrusted" or c.taint_state == TaintState.UNTRUSTED for c in active_contexts)
         is_critical_sink = tool_def.sensitivity in (SensitivityLevel.HIGH, SensitivityLevel.CRITICAL)
+
 
         # 4. Authority Containment Evaluation
         authority_violation = False

@@ -41,6 +41,12 @@ from agentguard.tracing.correlation import (
 )
 from agentguard.tracing.events import EventType, SecurityEvent
 from agentguard.tracing.tracer import CausalGraph, TraceManager
+from agentguard.posture.posture_engine import PostureEngine
+from agentguard.incidents.incident_engine import IncidentEngine
+from agentguard.response.response_engine import ResponseEngine
+from agentguard.drift.drift_engine import BehavioralBaselineTracker
+from agentguard.gates.security_gate import SecurityGateEvaluator
+
 
 
 class AgentGuard:
@@ -75,6 +81,14 @@ class AgentGuard:
         self.tool_registry: Dict[str, ToolDefinition] = {}
         self.delegation_registry: Dict[str, Delegation] = {}
         self.context_registry: Dict[str, Context] = {}
+
+        # Phase 9: Continuous Security Control Plane Engines
+        self.posture = PostureEngine(guard=self)
+        self.incidents = IncidentEngine(guard=self)
+        self.response = ResponseEngine(guard=self)
+        self.drift = BehavioralBaselineTracker(guard=self)
+        self.gates = SecurityGateEvaluator()
+
 
     @property
     def policy(self) -> PolicyEvaluator:

@@ -110,7 +110,7 @@ from agentguard.tracing.correlation import (
 from agentguard.tracing.events import EventType, SecurityEvent
 from agentguard.tracing.tracer import CausalEdge, CausalGraph, CausalNode, TraceManager
 
-__version__ = "0.4.0"
+__version__ = "0.9.0"
 
 # Phase 6.5 — Forensic Intelligence + Product API
 from agentguard.forensics.service import ForensicService
@@ -139,6 +139,50 @@ from agentguard.api.models import (
     IncidentResponse,
     ErrorResponse,
     HealthResponse,
+)
+
+# Phase 9 — Continuous Security Control Plane
+from agentguard.posture import (
+    SecurityPostureSnapshot,
+    PostureRating,
+    FindingSeverity,
+    PostureFinding,
+    PostureDimensionMetrics,
+    PostureDiff,
+    PostureEngine,
+    PostureDiffEngine,
+    PostureRuleEvaluator,
+)
+from agentguard.incidents import (
+    SecurityIncident,
+    IncidentState,
+    IncidentStateMachine,
+    IncidentTimelineEntry,
+    IncidentEngine,
+    IncidentCreationRule,
+)
+from agentguard.response import (
+    ResponseActionType,
+    ResponseActionRecord,
+    AuthorityChangeEvent,
+    ResponseEngine,
+)
+from agentguard.drift import (
+    DriftCategory,
+    DriftSeverity,
+    DriftEvent,
+    AgentBehaviorBaseline,
+    BehavioralBaselineTracker,
+    AuthorityDriftDetector,
+    AccessDriftDetector,
+    ContextDriftDetector,
+)
+from agentguard.gates import (
+    GateStatus,
+    GateCheckRule,
+    SecurityGateResult,
+    SecurityGateEvaluator,
+    security_gate,
 )
 
 __all__ = [
@@ -280,6 +324,40 @@ __all__ = [
     "IncidentResponse",
     "ErrorResponse",
     "HealthResponse",
+    # Phase 9 — Continuous Security Control Plane
+    "SecurityPostureSnapshot",
+    "PostureRating",
+    "FindingSeverity",
+    "PostureFinding",
+    "PostureDimensionMetrics",
+    "PostureDiff",
+    "PostureEngine",
+    "PostureDiffEngine",
+    "PostureRuleEvaluator",
+    "SecurityIncident",
+    "IncidentState",
+    "IncidentStateMachine",
+    "IncidentTimelineEntry",
+    "IncidentEngine",
+    "IncidentCreationRule",
+    "ResponseActionType",
+    "ResponseActionRecord",
+    "AuthorityChangeEvent",
+    "ResponseEngine",
+    "DriftCategory",
+    "DriftSeverity",
+    "DriftEvent",
+    "AgentBehaviorBaseline",
+    "BehavioralBaselineTracker",
+    "AuthorityDriftDetector",
+    "AccessDriftDetector",
+    "ContextDriftDetector",
+    "GateStatus",
+    "GateCheckRule",
+    "SecurityGateResult",
+    "SecurityGateEvaluator",
+    "security_gate",
 ]
+
 
 

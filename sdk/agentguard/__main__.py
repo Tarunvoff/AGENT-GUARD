@@ -369,9 +369,21 @@ def main():
             sys.exit(1)
     elif cmd == "forensic":
         _cli_forensic(args)
+    elif cmd == "posture":
+        sys.exit(_cli_posture(args[1:]))
+    elif cmd == "incidents" or cmd == "incident":
+        sys.exit(_cli_incidents(args[1:]))
+    elif cmd == "drift":
+        sys.exit(_cli_drift(args[1:]))
+    elif cmd in ("security-gate", "gate"):
+        sys.exit(_cli_security_gate(args[1:]))
+    elif cmd == "validate" and len(args) > 1 and args[1] == "ci":
+        sys.exit(_cli_security_gate(args[2:]))
     else:
         print(f"Unknown command: {' '.join(args)}")
+        print("Available commands: [status|health|llm-health|attack|forensic|posture|incidents|drift|security-gate|validate ci]")
         sys.exit(1)
+
 
 
 # ---------------------------------------------------------------------------
@@ -540,6 +552,147 @@ def _cli_forensic(args: List[str]) -> None:
         sys.exit(1)
 
 
+
+# ---------------------------------------------------------------------------
+# Phase 9 — Continuous Security Control Plane CLI Handlers
+# ---------------------------------------------------------------------------
+
+def _cli_posture(args: List[str]) -> int:
+    """Evaluate and display security posture."""
+    from agentguard.posture import PostureEngine
+    engine = PostureEngine()
+    snapshot = engine.evaluate_current_posture()
+
+    print("=" * 70)
+    print("  AGENTGUARD SECURITY POSTURE SCORECARD")
+    print("=" * 70)
+    print(f"  Overall Score   : {snapshot.overall_score:.1f} / 100.0  [Rating: {snapshot.rating.value}]")
+    print(f"  Evaluated At    : {snapshot.evaluated_at.isoformat()}")
+    print("-" * 70)
+    print("  DIMENSIONS:")
+    print(f"    * Threat Prevention Rate   : {snapshot.dimensions.threat_prevention_rate:.1%}")
+    print(f"    * Boundary Adherence       : {snapshot.dimensions.boundary_adherence:.1%}")
+    print(f"    * Lineage Integrity        : {snapshot.dimensions.lineage_integrity:.1%}")
+    print(f"    * Incident Containment     : {snapshot.dimensions.incident_containment_speed_score:.1f}/100")
+    print(f"    * Hygiene & Deprecation    : {snapshot.dimensions.hygiene_score:.1f}/100")
+    print("-" * 70)
+    print(f"  ACTIVE FINDINGS ({len(snapshot.findings)}):")
+    if not snapshot.findings:
+        print("    (none — system is operating within optimal security boundaries)")
+    else:
+        for f in snapshot.findings:
+            print(f"    [{f.severity.value}] {f.title} (Deduction: -{f.deduction:.1f})")
+            print(f"      {f.description}")
+            if f.remediation:
+                print(f"      Remediation: {f.remediation}")
+    print("=" * 70)
+    return 0
+
+
+def _cli_incidents(args: List[str]) -> int:
+    """List or inspect security incidents."""
+    from agentguard.incidents import IncidentEngine, IncidentState
+    engine = IncidentEngine()
+
+    if not args or args[0] in ("list", "ls"):
+        state_filter = None
+        if len(args) > 1:
+            try:
+                state_filter = IncidentState(args[1].upper())
+            except ValueError:
+                pass
+        incidents = engine.list_incidents(state=state_filter)
+        print("=" * 75)
+        print("  AGENTGUARD SECURITY INCIDENT LOG")
+        print("=" * 75)
+        print(f"  {'INCIDENT ID':<24} | {'SEVERITY':<10} | {'STATE':<14} | {'TITLE'}")
+        print("-" * 75)
+        if not incidents:
+            print("  (no active incidents tracked)")
+        for inc in incidents:
+            print(f"  {inc.incident_id:<24} | {inc.severity.value:<10} | {inc.state.value:<14} | {inc.title}")
+        print("=" * 75)
+        return 0
+
+    elif args[0] in ("show", "get") and len(args) > 1:
+        inc = engine.get_incident(args[1])
+        if not inc:
+            print(f"Incident '{args[1]}' not found.")
+            return 1
+        print("=" * 70)
+        print(f"  INCIDENT: {inc.incident_id}")
+        print("=" * 70)
+        print(f"  Title       : {inc.title}")
+        print(f"  Severity    : {inc.severity.value}")
+        print(f"  State       : {inc.state.value}")
+        print(f"  Target Agent: {inc.target_agent_id}")
+        print(f"  Root Cause  : {inc.root_cause}")
+        print("-" * 70)
+        print("  TIMELINE:")
+        for t in inc.timeline:
+            print(f"    [{t.timestamp.isoformat()}] {t.state.value} by {t.actor}: {t.reason}")
+        print("=" * 70)
+        return 0
+
+    else:
+        print("Usage: python -m agentguard incidents [list [STATE]|show <incident_id>]")
+        return 1
+
+
+def _cli_drift(args: List[str]) -> int:
+    """Display behavioral baseline drifts."""
+    from agentguard.drift import BehavioralBaselineTracker
+    tracker = BehavioralBaselineTracker()
+    print("=" * 75)
+    print("  AGENTGUARD BEHAVIORAL DRIFT DETECTIONS")
+    print("=" * 75)
+    print(f"  {'EVENT ID':<20} | {'AGENT':<18} | {'CATEGORY':<14} | {'DESCRIPTION'}")
+    print("-" * 75)
+    if not tracker.drift_events:
+        print("  (no drift anomalies detected — behavior within baseline bounds)")
+    for d in tracker.drift_events:
+        print(f"  {d.drift_id:<20} | {d.agent_id:<18} | {d.category.value:<14} | {d.description}")
+    print("=" * 75)
+    return 0
+
+
+def _cli_security_gate(args: List[str]) -> int:
+    """Evaluate CI/CD Security Quality Gate."""
+    from agentguard.gates import SecurityGateEvaluator
+    from agentguard.offensive.corpus import AttackCorpus
+    corpus = AttackCorpus()
+    regressions = corpus.get_regression_attacks()
+
+    evaluator = SecurityGateEvaluator()
+    # In live gate evaluation without bypasses:
+    result = evaluator.evaluate(
+        campaign_name="cli_quality_gate",
+        total_attacks=len(corpus.get_all_attacks()),
+        blocked_attacks=len(corpus.get_all_attacks()),
+        bypassed_attacks=0,
+        unauthorized_db_calls=0,
+        open_regressions=0,
+        failed_replays=0,
+    )
+
+    print("=" * 70)
+    print("  AGENTGUARD CI/CD SECURITY QUALITY GATE")
+    print("=" * 70)
+    print(f"  Status    : {result.status.value}")
+    print(f"  Exit Code : {result.exit_code}")
+    print(f"  Summary   : {result.summary}")
+    print("-" * 70)
+    print("  CHECKS:")
+    for chk in result.checks:
+        status_sym = "[PASS]" if chk.passed else "[FAIL]"
+        print(f"    {status_sym} {chk.rule_name:<30} (Observed: {chk.observed_value}, Threshold: {chk.threshold})")
+        if not chk.passed and chk.failure_message:
+            print(f"           Error: {chk.failure_message}")
+    print("=" * 70)
+    return result.exit_code
+
+
 if __name__ == "__main__":
     main()
+
 

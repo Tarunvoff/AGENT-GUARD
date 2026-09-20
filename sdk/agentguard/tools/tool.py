@@ -52,9 +52,10 @@ class ToolRequest(BaseModel):
     """A concrete invocation request targeting a tool."""
     
     request_id: str = Field(default_factory=lambda: generate_id("req"))
-    tool_id: str = Field(..., description="Tool ID being invoked")
+    tool_id: str = Field(default_factory=lambda: generate_id("tool"), description="Tool ID being invoked")
     tool_name: str = Field(..., description="Tool name")
     agent_id: Optional[str] = Field(default=None, description="Requesting agent ID")
+
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Tool invocation parameters")
     context_ids: List[str] = Field(default_factory=list, description="IDs of context objects influencing this request")
     target_resource: Optional[Resource] = Field(default=None, description="Specific target resource if applicable")

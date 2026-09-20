@@ -32,6 +32,12 @@ class EventType(str, Enum):
     APPROVAL_REJECTED = "approval.rejected"
     INCIDENT_CREATED = "incident.created"
     AI_ANALYSIS_COMPLETED = "ai.analysis_completed"
+    POSTURE_EVALUATED = "posture.evaluated"
+    INCIDENT_TRANSITIONED = "incident.transitioned"
+    RESPONSE_EXECUTED = "response.executed"
+    DRIFT_DETECTED = "drift.detected"
+    GATE_EVALUATED = "gate.evaluated"
+
 
 
 

@@ -47,7 +47,9 @@ class AgentGuardConfig(BaseModel):
     
     app_name: str = Field(default="AgentGuard", description="Application or service name")
     environment: str = Field(default="production", description="Runtime environment (development, staging, production)")
+    enforcement_mode: str = Field(default="STRICT", description="Control plane enforcement mode (STRICT, MONITOR, AUDIT)")
     enforce_monotonic_delegation: bool = Field(
+
         default=True,
         description="Whether an agent is strictly forbidden from delegating authority it was not granted"
     )

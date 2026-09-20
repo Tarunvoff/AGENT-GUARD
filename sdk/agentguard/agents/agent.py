@@ -55,9 +55,10 @@ class Agent:
 
     def delegate(
         self,
-        delegate: "Agent",
+        delegate: Optional["Agent"] = None,
         capabilities: Optional[List[Union[str, AgentCapability]]] = None,
         constraints: Optional[Dict[str, Any]] = None,
+        to_agent: Optional["Agent"] = None,
     ) -> "DelegationScope":
         """Delegate a subset of authority/capabilities to a target agent within a scoped context.
         
@@ -65,17 +66,21 @@ class Agent:
             with planner.delegate(researcher, capabilities=["public_search"]):
                 ...
         """
+        target = delegate or to_agent
+        if target is None:
+            raise ValueError("Target delegate agent must be provided to delegate().")
         if self.guard is None:
             raise RuntimeError("Agent is not attached to an AgentGuard instance.")
         
         return self.guard._create_delegation_scope(
             delegator=self,
-            delegate=delegate,
+            delegate=target,
             capabilities=capabilities,
             constraints=constraints,
         )
 
     def invoke(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+
         """Invoke a synchronous function within this agent's execution context."""
         if self.guard is None:
             return fn(*args, **kwargs)

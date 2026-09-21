@@ -1,200 +1,305 @@
 @import "tailwindcss";
 
-/* ─── Design Tokens ────────────────────────────────────────────────── */
+/*
+ * ActShield — Enterprise Security Console Design System
+ *
+ * Design principles:
+ *   - Information density over decoration
+ *   - Neutral surfaces, controlled semantic accents
+ *   - No gradients as primary visual language
+ *   - Flat, bordered cards over glassmorphism
+ *   - Typography hierarchy: Inter (UI) + IBM Plex Mono (code/IDs)
+ *   - Animations: purposeful only (state changes, not decoration)
+ *   - High contrast semantic colors (accessible without color alone)
+ *
+ * Severity palette (WCAG AA on dark backgrounds):
+ *   Critical  #ef4444  (red-500)
+ *   High      #f97316  (orange-500)
+ *   Medium    #f59e0b  (amber-500)
+ *   Low       #3b82f6  (blue-500)
+ *   Info      #6b7280  (gray-500)
+ *
+ * Enforcement palette:
+ *   BLOCK     #ef4444  (red-500)
+ *   HITL      #f97316  (orange-500)
+ *   MONITOR   #f59e0b  (amber-500)
+ *   ALLOW     #10b981  (emerald-500)
+ *   REVOKE    #dc2626  (red-600)
+ */
+
+/* ─── Fonts ──────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* ─── Design Tokens ──────────────────────────────────────────────────── */
 
 :root {
-  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
-  --font-mono: var(--font-mono), 'JetBrains Mono', 'Fira Code', monospace;
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  /* Security state colors */
-  --color-allow: #10b981;
-  --color-block: #ef4444;
-  --color-hitl: #f59e0b;
-  --color-monitor: #60a5fa;
+  /* Base spacing unit: 4px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
 
-  /* Trust */
-  --color-trust-high: #10b981;
-  --color-trust-medium: #60a5fa;
-  --color-trust-low: #f59e0b;
-  --color-trust-untrusted: #ef4444;
+  /* Border radius — conservative, not pill-shaped */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
 
-  /* Background */
-  --bg-primary: #090d16;
-  --bg-secondary: #0c1119;
-  --bg-card: rgba(15, 20, 30, 0.6);
+  /* ── Surface palette (dark-first) ── */
+  --surface-bg:       #09090b;   /* zinc-950 — page background */
+  --surface-base:     #111113;   /* zinc-900 — primary card surface */
+  --surface-raised:   #18181b;   /* zinc-800 equiv — secondary surface */
+  --surface-overlay:  #27272a;   /* zinc-800 — modals, dropdowns */
+  --surface-border:   #3f3f46;   /* zinc-700 — default border */
+  --surface-divider:  #27272a;   /* zinc-800 — dividers */
+
+  /* ── Text palette ── */
+  --text-primary:     #fafafa;   /* zinc-50 */
+  --text-secondary:   #a1a1aa;   /* zinc-400 */
+  --text-tertiary:    #71717a;   /* zinc-500 */
+  --text-disabled:    #52525b;   /* zinc-600 */
+
+  /* ── Brand ── */
+  --brand-primary:    #3b82f6;   /* blue-500 — ActShield blue */
+  --brand-secondary:  #1d4ed8;   /* blue-700 */
+  --brand-subtle:     #1e3a5f;   /* custom — brand tint on surface */
+
+  /* ── Semantic enforcement ── */
+  --color-block:      #ef4444;   /* red-500 */
+  --color-block-bg:   #1a0808;
+  --color-block-border: #7f1d1d;
+  --color-hitl:       #f97316;   /* orange-500 */
+  --color-hitl-bg:    #1a0e05;
+  --color-hitl-border: #7c2d12;
+  --color-monitor:    #f59e0b;   /* amber-500 */
+  --color-monitor-bg: #1a1505;
+  --color-monitor-border: #78350f;
+  --color-allow:      #10b981;   /* emerald-500 */
+  --color-allow-bg:   #051a10;
+  --color-allow-border: #065f46;
+  --color-revoke:     #dc2626;   /* red-600 */
+  --color-quarantine: #7c3aed;   /* violet-600 */
+
+  /* ── Severity ── */
+  --sev-critical:     #ef4444;
+  --sev-critical-bg:  #1a0808;
+  --sev-critical-bdr: #7f1d1d;
+  --sev-high:         #f97316;
+  --sev-high-bg:      #1a0e05;
+  --sev-high-bdr:     #7c2d12;
+  --sev-medium:       #f59e0b;
+  --sev-medium-bg:    #1a1505;
+  --sev-medium-bdr:   #78350f;
+  --sev-low:          #3b82f6;
+  --sev-low-bg:       #0a1525;
+  --sev-low-bdr:      #1e40af;
+  --sev-info:         #6b7280;
+  --sev-info-bg:      #111113;
+  --sev-info-bdr:     #3f3f46;
+
+  /* ── Trust levels ── */
+  --trust-high:       #10b981;
+  --trust-medium:     #3b82f6;
+  --trust-low:        #f59e0b;
+  --trust-untrusted:  #ef4444;
+
+  /* ── Component specifics ── */
+  --nav-width:        220px;
+  --header-height:    48px;
 }
 
-/* ─── Global Reset ──────────────────────────────────────────────────── */
+/* ─── Global Reset ───────────────────────────────────────────────────── */
 
 *, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html {
+  height: 100%;
+  /* Smooth scroll — but only when user hasn't requested reduced motion */
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body {
-  background: var(--bg-primary);
-  color: #e2e8f0;
+  min-height: 100vh;
+  background: var(--surface-bg);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
+  font-feature-settings: 'kern' 1, 'liga' 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbars ───────────────────────────────────────────────────── */
+/* ─── Scrollbars ─────────────────────────────────────────────────────── */
 
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
+  background: var(--surface-border);
   border-radius: 999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #52525b;
 }
 
-/* ─── Typography ───────────────────────────────────────────────────── */
+/* ─── Typography ─────────────────────────────────────────────────────── */
 
-.font-mono,
-code, kbd, pre, samp {
+h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.005em; }
+h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+h4 { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); }
+
+code, pre, .font-mono, [data-monospace] {
   font-family: var(--font-mono);
+  font-size: 12px;
 }
 
-/* ─── Security state backgrounds (scanline feel for critical) ──────── */
+/* ─── Surfaces ───────────────────────────────────────────────────────── */
 
-.bg-critical-scan {
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(239, 68, 68, 0.015) 2px,
-      rgba(239, 68, 68, 0.015) 4px
-    );
+.surface-base {
+  background: var(--surface-base);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
 }
 
-/* ─── Glass card ──────────────────────────────────────────────────── */
-
-.card-glass {
-  background: rgba(15, 20, 30, 0.5);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+.surface-raised {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
 }
 
-/* ─── Grid background pattern ─────────────────────────────────────── */
+/* ─── Enforcement badge ──────────────────────────────────────────────── */
 
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 40px 40px;
+[data-enforcement="BLOCK"]      { color: var(--color-block);     }
+[data-enforcement="HITL"]       { color: var(--color-hitl);      }
+[data-enforcement="MONITOR"]    { color: var(--color-monitor);   }
+[data-enforcement="ALLOW"]      { color: var(--color-allow);     }
+[data-enforcement="REVOKE"]     { color: var(--color-revoke);    }
+[data-enforcement="QUARANTINE"] { color: var(--color-quarantine);}
+
+/* ─── Severity indicators ────────────────────────────────────────────── */
+
+[data-severity="CRITICAL"] { color: var(--sev-critical); }
+[data-severity="HIGH"]     { color: var(--sev-high);     }
+[data-severity="MEDIUM"]   { color: var(--sev-medium);   }
+[data-severity="LOW"]      { color: var(--sev-low);      }
+[data-severity="INFO"]     { color: var(--sev-info);     }
+
+.severity-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.severity-dot[data-severity="CRITICAL"] { background: var(--sev-critical); }
+.severity-dot[data-severity="HIGH"]     { background: var(--sev-high);     }
+.severity-dot[data-severity="MEDIUM"]  { background: var(--sev-medium);   }
+.severity-dot[data-severity="LOW"]     { background: var(--sev-low);      }
+.severity-dot[data-severity="INFO"]    { background: var(--sev-info);     }
+
+/* ─── Status indicator ──────────────────────────────────────────────── */
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.status-dot.online   { background: var(--color-allow); }
+.status-dot.degraded { background: var(--color-monitor); }
+.status-dot.offline  { background: var(--color-block); }
+
+/* ─── Data table ─────────────────────────────────────────────────────── */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
 }
 
-/* ─── Animated connection line ─────────────────────────────────────── */
-
-@keyframes flow-right {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
+.data-table th {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  text-align: left;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--surface-border);
 }
 
-.flow-line {
-  stroke-dasharray: 8 4;
-  animation: flow-right 1s linear infinite;
+.data-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--surface-divider);
+  color: var(--text-secondary);
+  vertical-align: middle;
 }
 
-/* ─── Glow effects ────────────────────────────────────────────────── */
-
-.glow-red {
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), 0 0 40px rgba(239, 68, 68, 0.05);
+.data-table tr:hover td {
+  background: var(--surface-raised);
 }
 
-.glow-emerald {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), 0 0 40px rgba(16, 185, 129, 0.05);
+.data-table td:first-child {
+  color: var(--text-primary);
 }
 
-.glow-sky {
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.15), 0 0 40px rgba(56, 189, 248, 0.05);
-}
-
-/* ─── React Flow custom node styles ──────────────────────────────── */
-
-.react-flow__node {
-  font-family: var(--font-sans);
-}
-
-.react-flow__edge-path {
-  stroke: #374151;
-}
-
-.react-flow__minimap {
-  background: #0c1119;
-  border: 1px solid #1f2937;
-  border-radius: 8px;
-}
-
-.react-flow__controls {
-  background: #0c1119;
-  border: 1px solid #1f2937;
-  border-radius: 8px;
-}
-
-.react-flow__controls-button {
-  background: #0c1119;
-  border-bottom: 1px solid #1f2937;
-  color: #9ca3af;
-  fill: #9ca3af;
-}
-
-.react-flow__controls-button:hover {
-  background: #111827;
-  color: #e2e8f0;
-  fill: #e2e8f0;
-}
-
-.react-flow__background {
-  background: #090d16;
-}
-
-/* ─── Recharts styles ─────────────────────────────────────────────── */
-
-.recharts-tooltip-wrapper {
-  outline: none !important;
-}
-
-/* ─── Utility animations ─────────────────────────────────────────── */
-
-@keyframes pulse-slow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
-}
-
-@keyframes slide-in-right {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-.slide-in-right {
-  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ─── Focus ring ─────────────────────────────────────────────────── */
+/* ─── Focus states (accessibility) ──────────────────────────────────── */
 
 :focus-visible {
-  outline: 2px solid rgba(56, 189, 248, 0.5);
+  outline: 2px solid var(--brand-primary);
   outline-offset: 2px;
+}
+
+/* ─── Link ───────────────────────────────────────────────────────────── */
+
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+/* ─── Selection ──────────────────────────────────────────────────────── */
+
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+}
+
+/* ─── Animations — purposeful only ──────────────────────────────────── */
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.live-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fade-in 150ms ease-out;
 }

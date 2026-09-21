@@ -1,30 +1,48 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
-  variable: '--font-inter',
+  variable: '--font-sans',
   subsets: ['latin'],
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-mono',
-  subsets: ['latin'],
+  weight: ['400', '500', '600'],
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'AgentGuard — Security Control Plane for Autonomous AI',
+  title: 'ActShield — Security Control Plane for Autonomous AI',
   description:
-    'AgentGuard gives autonomous AI systems identity, authority, context provenance, deterministic policy enforcement, and execution evidence.',
-  keywords: ['AI security', 'agent security', 'multi-agent', 'MCP security', 'policy enforcement', 'LLM security'],
+    'ActShield provides identity, authority containment, context provenance, ' +
+    'deterministic policy enforcement, threat modeling, and forensic investigation ' +
+    'for autonomous and multi-agent AI systems.',
+  keywords: [
+    'AI security',
+    'agent security',
+    'multi-agent security',
+    'MCP security',
+    'policy enforcement',
+    'LLM security',
+    'threat modeling',
+    'agentic AI',
+  ],
+  robots: 'noindex, nofollow',   // Security console — not for public indexing
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} h-full dark`}>
-      <body className="min-h-full bg-[#090d16] text-zinc-100 antialiased">
+    <html lang="en" className={`${inter.variable} h-full`}>
+      <head>
+        {/* IBM Plex Mono for IDs, timestamps, and code */}
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-full antialiased">
         {children}
       </body>
     </html>

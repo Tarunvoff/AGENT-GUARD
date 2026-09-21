@@ -67,7 +67,8 @@ all = [
 ]
 
 [project.scripts]
-agentguard = "agentguard.__main__:app"
+agentguard = "agentguard.cli.main:main"
+ag = "agentguard.cli.main:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -1,4 +1,4 @@
-﻿"""
+"""
 ActShield Dashboard API Server
 ================================
 FastAPI server that exposes live SDK data to the Next.js dashboard.
@@ -617,10 +617,53 @@ def evaluate_security_gate(req: GateEvaluationRequest):
 
 
 
+# ── Static Dashboard Serving (Embedded Control Plane) ─────────────────────────
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+if STATIC_DIR.exists() and (STATIC_DIR / "index.html").exists():
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    # Mount _next static assets
+    next_static_dir = STATIC_DIR / "_next"
+    if next_static_dir.exists():
+        app.mount("/_next", StaticFiles(directory=str(next_static_dir)), name="next_static")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_dashboard_page(full_path: str):
+        # Exclude API, OpenAPI and docs from catch-all
+        if full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json"):
+            raise HTTPException(status_code=404, detail="Not Found")
+
+        # 1. Exact file match (e.g. /favicon.ico, /logo.png, etc.)
+        if full_path:
+            target = STATIC_DIR / full_path
+            if target.is_file():
+                return FileResponse(target)
+
+            # 2. Path with .html extension (e.g. /agents -> agents.html)
+            html_target = STATIC_DIR / f"{full_path}.html"
+            if html_target.is_file():
+                return FileResponse(html_target)
+
+            # 3. Path directory index (e.g. /access/matrix -> access/matrix.html or access/matrix/index.html)
+            dir_index = STATIC_DIR / full_path / "index.html"
+            if dir_index.is_file():
+                return FileResponse(dir_index)
+
+        # 4. Root / SPA fallback
+        index_target = STATIC_DIR / "index.html"
+        if index_target.is_file():
+            return FileResponse(index_target)
+
+        raise HTTPException(status_code=404, detail="Page not found")
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("actshield.api.server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("actshield.api.server:app", host="127.0.0.1", port=8000, reload=True)
+
 
 

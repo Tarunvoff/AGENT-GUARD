@@ -219,18 +219,21 @@ def cmd_watch(
 
 @app.command(name="serve")
 def cmd_serve(
-    port: int = typer.Option(3000, "--port", "-p", help="Dashboard port"),
-    api_port: int = typer.Option(8000, "--api-port", help="FastAPI port"),
+    port: int = typer.Option(8000, "--port", "-p", help="Server port (default: 8000)"),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address (default: 127.0.0.1)"),
     no_browser: bool = typer.Option(False, "--no-browser", help="Do not open browser automatically"),
-    host: str = typer.Option("127.0.0.1", "--host", help="Bind address (default: localhost only)"),
+    dev: bool = typer.Option(False, "--dev", help="Run with Next.js development server (requires Node.js)"),
 ) -> None:
-    """Start ActShield FastAPI runtime and Next.js Dashboard.
+    """Start ActShield / AgentGuard Control Plane (Embedded Dashboard + API).
 
-    By default binds to 127.0.0.1 (localhost). Pass --host 0.0.0.0 only
-    in development environments with appropriate network security controls.
+    Serves:
+      /         → Embedded Dashboard UI
+      /api/v1/* → FastAPI Backend API
+      /docs     → Swagger UI
+      /redoc    → ReDoc UI
     """
     from actshield.serve import serve_dashboard
-    serve_dashboard(port=port, api_port=api_port, open_browser=not no_browser, host=host)
+    serve_dashboard(port=port, open_browser=not no_browser, host=host, dev_mode=dev)
 
 
 # ── AI commands ─────────────────────────────────────────────────────────────
@@ -349,22 +352,26 @@ def cmd_gate_evaluate(
 
 @dashboard_app.command(name="start")
 def cmd_dashboard_start(
-    port: int = typer.Option(3000, "--port", "-p"),
-    api_port: int = typer.Option(8000, "--api-port"),
+    port: int = typer.Option(8000, "--port", "-p", help="Server port (default: 8000)"),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Do not open browser automatically"),
+    dev: bool = typer.Option(False, "--dev", help="Run with Next.js development server"),
 ) -> None:
-    """Start the ActShield Dashboard and backend runtime."""
+    """Start the unified ActShield Control Plane (Dashboard + API)."""
     from actshield.serve import serve_dashboard
-    serve_dashboard(port=port, api_port=api_port)
+    serve_dashboard(port=port, host=host, open_browser=not no_browser, dev_mode=dev)
 
 
 @dashboard_app.command(name="serve")
 def cmd_dashboard_serve(
-    port: int = typer.Option(3000, "--port", "-p"),
-    api_port: int = typer.Option(8000, "--api-port"),
+    port: int = typer.Option(8000, "--port", "-p", help="Server port (default: 8000)"),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Do not open browser automatically"),
+    dev: bool = typer.Option(False, "--dev", help="Run with Next.js development server"),
 ) -> None:
     """Alias for dashboard start."""
     from actshield.serve import serve_dashboard
-    serve_dashboard(port=port, api_port=api_port)
+    serve_dashboard(port=port, host=host, open_browser=not no_browser, dev_mode=dev)
 
 
 # ── Threat commands ──────────────────────────────────────────────────────────

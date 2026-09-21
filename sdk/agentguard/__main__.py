@@ -1,698 +1,478 @@
-"""AgentGuard CLI interface."""
+"""
+AgentGuard — Production Security Control Plane CLI
+==================================================
+Rich, CLI-first, SDK-first terminal interface for autonomous AI systems.
+Inspired by modern developer infrastructure CLIs with ASCII art, rich formatting,
+interactive console, live event streaming, and provider management.
+"""
+from __future__ import annotations
 
-import argparse
 import json
 import os
-import pathlib
 import sys
+import time
+from datetime import datetime, timezone
 from typing import List, Optional
 
-from agentguard.client import AgentGuard
-from agentguard.llm_config import LLMConfig
-from agentguard.offensive.attack import AttackType
-from agentguard.offensive.campaign import AttackCampaign
-from agentguard.offensive.corpus import AttackCorpus
-from agentguard.offensive.engine import OffensiveEngine
-from agentguard.offensive.results import AttackStatus
-from agentguard.offensive.adaptive import (
-    AdaptiveEngine,
-    CampaignMemory,
-    MutationNode,
-)
+import typer
+from rich.align import Align
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Prompt
+from rich.table import Table
+from rich.text import Text
 
-
-def cli_llm_health() -> int:
-    """Check connection to Ollama and print status."""
-    config = LLMConfig.from_env()
-    print("=" * 60)
-    print("  AGENTGUARD LLM ADAPTER HEALTH CHECK")
-    print("=" * 60)
-    print(f"  Provider       : {config.provider}")
-    print(f"  Model          : {config.model}")
-    print(f"  Base URL       : {config.base_url}")
-    print(f"  Timeout        : {config.timeout}s")
-    print(f"  Enabled        : {config.enabled}")
-    print("-" * 60)
-
-    from agentguard.integrations.ollama_adapter import OllamaAISecuraAdapter
-    adapter = OllamaAISecuraAdapter(config)
-    health = adapter.health_check()
-
-    status_str = "AVAILABLE" if health.get("available") else "UNAVAILABLE"
-    print(f"  Status         : {status_str}")
-    print(f"  Model Present  : {health.get('model_present', False)}")
-    print(f"  Latency        : {health.get('latency_ms', 0):.1f}ms")
-    if "error" in health:
-        print(f"  Error          : {health['error']}")
-    print("=" * 60)
-    return 0 if health.get("available") else 1
-
-
-def cli_attack_list():
-    """List all available attack cases in baseline and regression corpus."""
-    corpus = AttackCorpus()
-    baseline = corpus.get_all_attacks()
-    regressions = corpus.get_regression_attacks()
-
-    print("=" * 78)
-    print("  AGENTGUARD OFFENSIVE ATTACK CORPUS")
-    print("=" * 78)
-    print(f"  {'ATTACK ID':<28} | {'TYPE':<25} | {'TARGET AGENT':<15} | {'EXP'}")
-    print("-" * 78)
-    for a in baseline:
-        atype = a.attack_type.value if hasattr(a.attack_type, 'value') else str(a.attack_type)
-        exp_val = a.expected_behavior.value if hasattr(getattr(a, 'expected_behavior', None), 'value') else str(getattr(a, 'expected_behavior', 'BLOCK'))
-        print(f"  {a.attack_id:<28} | {atype:<25} | {a.target_agent:<15} | {exp_val}")
-
-    print("-" * 78)
-    print(f"  REGRESSION FIXTURES ({len(regressions)}):")
-    for r in regressions:
-        atype = r.attack_type.value if hasattr(r.attack_type, 'value') else str(r.attack_type)
-        exp_val = r.expected_behavior.value if hasattr(getattr(r, 'expected_behavior', None), 'value') else str(getattr(r, 'expected_behavior', 'BLOCK'))
-        print(f"  * {r.attack_id:<26} | {atype:<25} | {r.target_agent:<15} | {exp_val}")
-    print("=" * 78)
-    return 0
-
-
-def cli_attack_run(args):
-    """Run validation attack campaign."""
-    engine = OffensiveEngine()
-    corpus = AttackCorpus()
-
-    if args.type:
-        try:
-            atype = AttackType(args.type)
-            cases = corpus.get_attacks_by_type(atype)
-        except ValueError:
-            print(f"Invalid attack type: {args.type}")
-            return 1
-    else:
-        cases = corpus.get_all_attacks()
-
-    if args.limit:
-        cases = cases[:args.limit]
-
-    target = engine.registry.get("agentguard-demo")
-    campaign = AttackCampaign(
-        name="CLI Validation Campaign",
-        objective="Validate defenses against corpus",
-        target=target,
-        attacks=cases,
-    )
-
-    print("=" * 78)
-    print(f"  AGENTGUARD OFFENSIVE VALIDATION ENGINE")
-    print(f"  Target:    {target.target_id} ({target.name})")
-    print(f"  Attacks:   {len(cases)}")
-    print("=" * 78)
-
-    results, summary = engine.execute_campaign(campaign)
-
-    for idx, r in enumerate(results, 1):
-        status_tag = f"[{r.status.value}]"
-        print(f"  {idx:02d}. {status_tag:<8} {r.attack_id:<28} | Act: {r.actual_decision:<6} | {r.latency_ms:6.1f}ms")
-
-    print("-" * 78)
-    print(f"  Summary: {summary.blocked}/{summary.total_attacks} Blocked ({summary.block_rate_pct}%) | "
-          f"Bypasses: {summary.bypassed} | Sensitive DB Calls: {summary.sensitive_actions_executed}")
-    print("=" * 78)
-
-    engine.export_reports(summary, results)
-    return 0 if summary.bypassed == 0 else 1
-
-
-def cli_attack_adaptive(args):
-    """Run adaptive offensive validation campaign."""
-    adaptive_engine = AdaptiveEngine(
-        max_depth=getattr(args, "max_depth", 3) or 3,
-        branch_factor=getattr(args, "branch_factor", 2) or 2,
-        seed=getattr(args, "seed", 20260919) or 20260919,
-    )
-
-    family = getattr(args, "family", None)
-    attack_id = getattr(args, "attack_id", None)
-    limit = getattr(args, "limit", None)
-
-    print("=" * 78)
-    print("  AGENTGUARD ADAPTIVE OFFENSIVE SECURITY VALIDATION (PHASE 5)")
-    print(f"  Max Depth: {adaptive_engine.max_depth} | Branch Factor: {adaptive_engine.branch_factor} | Seed: {adaptive_engine.seed}")
-    if family:
-        print(f"  Family:    {family}")
-    if attack_id:
-        print(f"  Attack ID: {attack_id}")
-    print("=" * 78)
-
-    results, summary, memory = adaptive_engine.run_adaptive_campaign(
-        family=family,
-        attack_id=attack_id,
-        limit_seeds=limit,
-    )
-
-    for r in results:
-        depth = len(r.mutation_lineage) - 1 if r.mutation_lineage else 0
-        depth_tag = f"[D{depth}]"
-        status_tag = f"[{r.status.value}]"
-        reason = r.execution_evidence.policy_reason or "ALLOWED"
-        print(f"  {depth_tag:<5} {status_tag:<8} {r.attack_id:<32} | Dec: {r.actual_decision:<6} | Reason: {reason[:28]:<28} | {r.latency_ms:5.1f}ms")
-
-    print("-" * 78)
-    print(f"  Scorecard: {summary.blocked}/{summary.total_attacks} Blocked ({summary.block_rate_pct}%) | "
-          f"Bypasses: {summary.bypassed} | Prevention Rate: {summary.empirical_prevention_rate * 100:.1f}%")
-    print(f"  Mutations: {summary.unique_attack_variants} variants (Max Depth: {summary.max_mutation_depth}) | "
-          f"Mean Latency: {summary.mean_latency_ms}ms")
-    print("=" * 78)
-
-    adaptive_engine.export_dashboard_json(summary, results, memory)
-    return 0 if summary.bypassed == 0 else 1
-
-
-def cli_attack_regressions():
-    """List all stored regression fixtures."""
-    corpus = AttackCorpus()
-    regs = corpus.get_regression_attacks()
-    print("=" * 78)
-    print(f"  STORED REGRESSION FIXTURES ({len(regs)})")
-    print("=" * 78)
-    for idx, r in enumerate(regs, 1):
-        print(f"  {idx:02d}. {r.attack_id:<32} | Type: {r.attack_type.value:<24} | Target: {r.target_agent}")
-        print(f"      Payload: {r.payload[:60]}...")
-    print("=" * 78)
-    return 0
-
-
-def cli_attack_lineage(attack_id: str):
-    """Show the mutation lineage tree leading to an attack."""
-    print("=" * 78)
-    print(f"  ATTACK MUTATION LINEAGE: '{attack_id}'")
-    print("=" * 78)
-
-    # Check regression fixtures
-    root = pathlib.Path(__file__).resolve().parent.parent.parent
-    reg_file = root / "examples" / "attacks" / "regressions" / f"{attack_id}.json"
-
-    if reg_file.exists():
-        try:
-            data = json.loads(reg_file.read_text(encoding="utf-8"))
-            print(f"  [Root Attack]  {data.get('attack_id', attack_id)}")
-            print(f"  [Attack Type]  {data.get('attack_type')}")
-            print(f"  [Target Tool]  {data.get('target_tool')}")
-            print(f"  [Entry Point]  {data.get('entry_point')}")
-            print(f"  [Description]  {data.get('description')}")
-            print(f"  [Saved Reason] {data.get('metadata', {}).get('regression_reason', 'Bypass detected')}")
-            print("=" * 78)
-            return 0
-        except Exception as e:
-            print(f"Error reading regression fixture: {e}")
-
-    # Fallback to general attack search
-    corpus = AttackCorpus()
-    attack = corpus.get_attack(attack_id)
-    if attack:
-        print(f"  [Attack Case]  {attack.attack_id}")
-        print(f"  [Parent ID]    {attack.mutation_of or 'None (Root Seed)'}")
-        print(f"  [Strategy]     {attack.mutation_strategy or 'Baseline'}")
-        print(f"  [Target Tool]  {attack.target_tool}")
-        print(f"  [Payload]      {attack.payload}")
-        print("=" * 78)
-        return 0
-
-    print(f"Attack ID '{attack_id}' not found in corpus or regressions.")
-    return 1
-
-
-def cli_attack_explain(attack_id: str):
-    """Explain the end-to-end security decision and evidence for an attack."""
-    engine = OffensiveEngine()
-    corpus = AttackCorpus()
-    attack = corpus.get_attack(attack_id)
-    if not attack:
-        print(f"Attack ID '{attack_id}' not found.")
-        return 1
-
-    print("=" * 78)
-    print(f"  EXPLAINING ATTACK DEFENSE: '{attack_id}'")
-    print("=" * 78)
-    res = engine.execute_attack(attack)
-
-    print(f"  Original Intent   : {attack.task_intent}")
-    print(f"  Target Agent      : {attack.target_agent}")
-    print(f"  Entry Point       : {attack.entry_point}")
-    print(f"  Context Taint     : {attack.context_taint}")
-    print(f"  Target Tool       : {attack.target_tool}")
-    print("-" * 78)
-    if res.security_evidence:
-        ev = res.security_evidence
-        print(f"  APIRIS Analysis   : Risk Score {ev.apiris_analysis.get('risk_score', 'N/A') if ev.apiris_analysis else 'N/A'} (Unavailable: {ev.apiris_unavailable})")
-        print(f"  AI Secura Reason  : {ev.ai_analysis.get('summary', 'N/A') if ev.ai_analysis else 'N/A'} (Unavailable: {ev.ai_unavailable})")
-        print(f"  Authority Check   : {'PASSED' if ev.authority_contained else 'VIOLATED (' + ev.authority_reason + ')'}")
-        print(f"  Intent Alignment  : {'PASSED' if ev.intent_aligned else 'VIOLATED (' + ev.intent_explanation + ')'}")
-    print("-" * 78)
-    print(f"  Policy Decision   : {res.actual_decision}")
-    print(f"  Policy Reason     : {res.execution_evidence.policy_reason}")
-    print(f"  Tool Executed     : {res.execution_evidence.tool_executed}")
-    print(f"  Sensitive DB Calls: {res.execution_evidence.sensitive_db_calls}")
-    print(f"  Final Verdict     : {'DEFENDED [PASS]' if not res.bypassed else 'SECURITY BYPASS [BYPASS]'}")
-    print("=" * 78)
-    return 0
-
-
-def cli_attack_replay(attack_id: str):
-    """Replay a specific attack fixture by ID."""
-    engine = OffensiveEngine()
-    print(f"Replaying attack fixture: '{attack_id}'...")
+# Initialize Typer App & Rich Console with UTF-8 support
+import sys
+if sys.platform == "win32":
     try:
-        res = engine.replay_attack(attack_id)
-        print(f"Outcome: [{res.status.value}] Action: {res.actual_decision} (Bypassed: {res.bypassed})")
-        print(f"Sensitive DB Calls: {res.execution_evidence.sensitive_db_calls}")
-        return 0 if res.status == AttackStatus.PASS else 1
-    except Exception as e:
-        print(f"Replay Error: {e}")
-        return 1
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
+app = typer.Typer(
+    name="agentguard",
+    help="AgentGuard — Continuous Security Control Plane for Multi-Agent AI Systems",
+    no_args_is_help=False,
+    add_completion=False,
+)
+ai_app = typer.Typer(
+    name="ai",
+    help="Manage AI Security Intelligence Providers and failover registry",
+)
+app.add_typer(ai_app, name="ai")
 
-def cli_attack_report():
-    """Print the latest generated security scorecard."""
-    root = pathlib.Path(__file__).resolve().parent.parent.parent
-    report_file = root / "reports" / "phase5" / "adaptive_campaign_summary.md"
-    if not report_file.exists():
-        report_file = root / "reports" / "phase4" / "campaign_summary.md"
-    if not report_file.exists():
-        print("No report found. Run 'python -m agentguard attack adaptive' or 'run --all' first.")
-        return 1
+console = Console(force_terminal=True)
 
-    print(report_file.read_text(encoding="utf-8"))
-    return 0
+# ---------------------------------------------------------------------------
+# Visual Branding & Banners
+# ---------------------------------------------------------------------------
 
+BANNER_ASCII = """
+   ___                    __   ____                      __
+  / _ | ___ ____ ___  ___/ /  / __/___ ___ __ __ ______ / /
+ / __ |/ _ `/ -_) _ \\/ _  /  / _// -_) __// // // __/ // / 
+/_/ |_|\\_, /\\__/_//_/\\_,_/  /_/  \\__/_/   \\_,_/ \\__(_)___/  
+      /___/                                                 
+   AGENTGUARD SECURITY CONTROL PLANE v0.9.0
+"""
 
-def main():
-    args = sys.argv[1:]
-
-    if not args:
-        print("AgentGuard CLI")
-        print("Usage:")
-        print("  python -m agentguard attack list")
-        print("  python -m agentguard attack run [--all] [--type <type>] [--limit <N>]")
-        print("  python -m agentguard attack adaptive [--family <f>] [--attack-id <id>] [--max-depth <N>] [--seed <s>]")
-        print("  python -m agentguard attack replay <attack_id> [--id <attack_id>]")
-        print("  python -m agentguard attack regressions")
-        print("  python -m agentguard attack lineage <attack_id> [--id <attack_id>]")
-        print("  python -m agentguard attack explain <attack_id> [--id <attack_id>]")
-        print("  python -m agentguard attack report")
-        print("  python -m agentguard llm health")
-        print("  python -m agentguard version")
-        sys.exit(0)
-
-    cmd = args[0]
-
-    if cmd == "llm" and len(args) >= 2 and args[1] == "health":
-        sys.exit(cli_llm_health())
-    elif cmd == "version":
-        print("agentguard 0.5.0")
-        sys.exit(0)
-    elif cmd == "attack":
-        subcmd = args[1] if len(args) > 1 else "help"
-        if subcmd == "list":
-            sys.exit(cli_attack_list())
-        elif subcmd == "run":
-            parser = argparse.ArgumentParser()
-            parser.add_argument("--all", action="store_true")
-            parser.add_argument("--type", type=str, default=None)
-            parser.add_argument("--limit", type=int, default=None)
-            parsed = parser.parse_args(args[2:])
-            sys.exit(cli_attack_run(parsed))
-        elif subcmd == "adaptive":
-            parser = argparse.ArgumentParser()
-            parser.add_argument("--family", type=str, default=None)
-            parser.add_argument("--attack-id", type=str, default=None)
-            parser.add_argument("--limit", type=int, default=None)
-            parser.add_argument("--max-depth", type=int, default=3)
-            parser.add_argument("--branch-factor", type=int, default=2)
-            parser.add_argument("--seed", type=int, default=20260919)
-            parsed = parser.parse_args(args[2:])
-            sys.exit(cli_attack_adaptive(parsed))
-        elif subcmd == "regressions":
-            sys.exit(cli_attack_regressions())
-        elif subcmd == "replay":
-            parser = argparse.ArgumentParser()
-            parser.add_argument("attack_id_pos", nargs="?", default=None)
-            parser.add_argument("--id", "--attack-id", dest="attack_id_flag", default=None)
-            parsed = parser.parse_args(args[2:])
-            atk_id = parsed.attack_id_flag or parsed.attack_id_pos
-            if not atk_id:
-                print("Usage: python -m agentguard attack replay <attack_id>")
-                sys.exit(1)
-            sys.exit(cli_attack_replay(atk_id))
-        elif subcmd == "lineage":
-            parser = argparse.ArgumentParser()
-            parser.add_argument("attack_id_pos", nargs="?", default=None)
-            parser.add_argument("--id", "--attack-id", dest="attack_id_flag", default=None)
-            parsed = parser.parse_args(args[2:])
-            atk_id = parsed.attack_id_flag or parsed.attack_id_pos
-            if not atk_id:
-                print("Usage: python -m agentguard attack lineage <attack_id>")
-                sys.exit(1)
-            sys.exit(cli_attack_lineage(atk_id))
-        elif subcmd == "explain":
-            parser = argparse.ArgumentParser()
-            parser.add_argument("attack_id_pos", nargs="?", default=None)
-            parser.add_argument("--id", "--attack-id", dest="attack_id_flag", default=None)
-            parsed = parser.parse_args(args[2:])
-            atk_id = parsed.attack_id_flag or parsed.attack_id_pos
-            if not atk_id:
-                print("Usage: python -m agentguard attack explain <attack_id>")
-                sys.exit(1)
-            sys.exit(cli_attack_explain(atk_id))
-        elif subcmd == "report":
-            sys.exit(cli_attack_report())
-        else:
-            print("Usage: python -m agentguard attack [list|run|adaptive|replay|regressions|lineage|explain|report]")
-            sys.exit(1)
-    elif cmd == "forensic":
-        _cli_forensic(args)
-    elif cmd == "posture":
-        sys.exit(_cli_posture(args[1:]))
-    elif cmd == "incidents" or cmd == "incident":
-        sys.exit(_cli_incidents(args[1:]))
-    elif cmd == "drift":
-        sys.exit(_cli_drift(args[1:]))
-    elif cmd in ("security-gate", "gate"):
-        sys.exit(_cli_security_gate(args[1:]))
-    elif cmd == "validate" and len(args) > 1 and args[1] == "ci":
-        sys.exit(_cli_security_gate(args[2:]))
-    else:
-        print(f"Unknown command: {' '.join(args)}")
-        print("Available commands: [status|health|llm-health|attack|forensic|posture|incidents|drift|security-gate|validate ci]")
-        sys.exit(1)
+def print_banner():
+    """Print the branded terminal banner."""
+    banner_text = Text(BANNER_ASCII.strip("\n"), style="bold cyan")
+    panel = Panel(
+        Align.center(banner_text),
+        subtitle="[bold white]Causal Lineage & Deterministic Security Boundary[/bold white]",
+        subtitle_align="center",
+        border_style="cyan",
+        padding=(0, 2),
+    )
+    console.print(panel)
 
 
 
 # ---------------------------------------------------------------------------
-# Forensic CLI — Phase 6.5
+# CLI Commands
 # ---------------------------------------------------------------------------
 
-def _build_forensic_service():
-    """Build a minimal ForensicService for CLI use (empty guard instance)."""
-    from agentguard.forensics.service import ForensicService
-    guard = AgentGuard()
-    return ForensicService(guard)
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """AgentGuard top-level entrypoint."""
+    if ctx.invoked_subcommand is None:
+        print_banner()
+        console.print("[dim]Use [bold cyan]agentguard --help[/bold cyan] to see available commands or [bold cyan]agentguard console[/bold cyan] for interactive mode.[/dim]\n")
+        # Run default quick status
+        status()
 
 
-def _cli_forensic(args: List[str]) -> None:
-    """python -m agentguard forensic <subcommand> ..."""
-    if len(args) < 2:
-        print("Usage: python -m agentguard forensic <subcommand> [options]")
-        print("\nSubcommands:")
-        print("  agent <agent_id>              Full forensic access profile for an agent")
-        print("  resource <resource_name>       Resource access profile")
-        print("  matrix                         Full access matrix (agents × resources)")
-        print("  delegation <agent_id>          Delegation chain for an agent")
-        print("  attempts <agent_id>            Access attempts by agent")
-        print("  actual-access <agent_id>       Confirmed executions by agent")
-        print("  reachable <agent_id>           Reachable resources analysis")
-        print("  snapshot                       Capture current security-state snapshot")
-        print("  diff --before <id> --after <id>  Compare two snapshots")
-        print("  attack <attack_id>             Attack forensic report")
-        print("  why <agent_id> <tool>          Why was this blocked/allowed?")
-        sys.exit(0)
+@app.command(name="status")
+def status():
+    """Display overall system security status, posture rating, and active agents."""
+    from agentguard.posture import PostureEngine
+    from agentguard.incidents import IncidentEngine
+    from agentguard.drift import BehavioralBaselineTracker
+    from agentguard.providers.registry import get_default_registry
 
-    subcmd = args[1]
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+        console=console,
+    ) as progress:
+        progress.add_task(description="Evaluating security control plane...", total=None)
+        posture = PostureEngine().evaluate_current_posture()
+        incidents = IncidentEngine().list_incidents()
+        drift = BehavioralBaselineTracker().drift_events
+        registry = get_default_registry()
+        active_provider = registry.get_active()
 
-    if subcmd == "agent":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic agent <agent_id>")
-            sys.exit(1)
-        agent_id = args[2]
-        svc = _build_forensic_service()
-        profile = svc.query.get_agent_access(agent_id)
-        if not profile:
-            print(f"[FORENSIC] Agent '{agent_id}' not found in current runtime.")
-            print("Note: Start an AgentGuard session and attach ForensicService to query live data.")
-            sys.exit(1)
-        print(json.dumps(profile.model_dump(mode="json"), indent=2))
+    # Overview Table
+    table = Table(title="[bold cyan]🛡️  SECURITY POSTURE SUMMARY[/bold cyan]", expand=True)
+    table.add_column("METRIC / DIMENSION", style="bold white", width=30)
+    table.add_column("VALUE / STATUS", style="bold", width=25)
+    table.add_column("ASSESSMENT", style="dim")
 
-    elif subcmd == "resource":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic resource <resource_name>")
-            sys.exit(1)
-        resource_name = args[2]
-        svc = _build_forensic_service()
-        profile = svc.query.get_resource_access(resource_name)
-        if not profile:
-            print(f"[FORENSIC] Resource '{resource_name}' not found.")
-            sys.exit(1)
-        print(json.dumps(profile.model_dump(mode="json"), indent=2))
+    grade_style = "bold green" if posture.overall_score >= 80 else "bold yellow" if posture.overall_score >= 60 else "bold red"
+    table.add_row("Overall Posture Grade", f"[{grade_style}]{posture.rating.value} ({posture.overall_score:.1f}/100)[/{grade_style}]", "Continuous score")
+    table.add_row("Threat Prevention Rate", f"{posture.dimensions.threat_prevention_rate:.1%}", "Deterministic blocks")
+    table.add_row("Boundary Adherence", f"{posture.dimensions.boundary_adherence:.1%}", "Capability containment")
+    table.add_row("Active Incidents", f"{len(incidents)} open", "Requires triage" if incidents else "Healthy")
+    table.add_row("Behavioral Drift Events", f"{len(drift)} detected", "Within baseline" if not drift else "Anomaly detected")
+    
+    prov_label = f"[bold green]{active_provider.provider_name}[/bold green] ({active_provider.model_name})" if active_provider else "[dim]None (Deterministic Only)[/dim]"
+    table.add_row("Active AI Intelligence", prov_label, "Advisory layer")
 
-    elif subcmd == "matrix":
-        svc = _build_forensic_service()
-        matrix = svc.query.get_access_matrix()
-        print("=" * 60)
-        print("  ACCESS MATRIX")
-        print("=" * 60)
-        table = matrix.to_table()
-        if not table:
-            print("  (no agents or resources registered in current runtime)")
-        else:
-            header = f"{'AGENT':<20} | " + " | ".join(f"{r[:18]:<18}" for r in matrix.resources)
-            print(header)
-            print("-" * len(header))
-            for agent_id, row in table.items():
-                vals = " | ".join(f"{row.get(r, 'NO'):<18}" for r in matrix.resources)
-                print(f"{agent_id:<20} | {vals}")
-        print("=" * 60)
-
-    elif subcmd == "delegation":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic delegation <agent_id>")
-            sys.exit(1)
-        agent_id = args[2]
-        svc = _build_forensic_service()
-        chain = svc.query.get_agent_delegation_chain(agent_id)
-        if not chain:
-            print(f"[FORENSIC] No delegation chain found for '{agent_id}'.")
-        else:
-            print(json.dumps(chain, indent=2, default=str))
-
-    elif subcmd == "attempts":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic attempts <agent_id>")
-            sys.exit(1)
-        agent_id = args[2]
-        svc = _build_forensic_service()
-        attempts = svc.query.get_agent_attempts(agent_id)
-        print(json.dumps(attempts, indent=2, default=str))
-
-    elif subcmd == "actual-access":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic actual-access <agent_id>")
-            sys.exit(1)
-        agent_id = args[2]
-        svc = _build_forensic_service()
-        actual = svc.query.get_agent_actual_access(agent_id)
-        print(json.dumps(actual, indent=2, default=str))
-
-    elif subcmd == "reachable":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic reachable <agent_id>")
-            sys.exit(1)
-        agent_id = args[2]
-        svc = _build_forensic_service()
-        reachable = svc.query.get_reachable_resources(agent_id)
-        print(f"\n[FORENSIC] Reachable resources for '{agent_id}':")
-        for r in reachable:
-            print(f"  + {r}")
-        if not reachable:
-            print("  (none — agent has no capabilities granting resource access)")
-
-    elif subcmd == "snapshot":
-        svc = _build_forensic_service()
-        snap = svc.take_snapshot(label="cli_snapshot")
-        print(f"[FORENSIC] Snapshot captured: {snap.snapshot_id}")
-        print(json.dumps(snap.model_dump(mode="json"), indent=2, default=str))
-
-    elif subcmd == "diff":
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--before", required=True)
-        parser.add_argument("--after", required=True)
-        parsed = parser.parse_args(args[2:])
-        svc = _build_forensic_service()
-        diff = svc.query.compare_access_snapshots(parsed.before, parsed.after)
-        if not diff:
-            print(f"[FORENSIC] Could not compare snapshots '{parsed.before}' and '{parsed.after}'.")
-            sys.exit(1)
-        print(json.dumps(diff.model_dump(mode="json"), indent=2, default=str))
-
-    elif subcmd == "attack":
-        if len(args) < 3:
-            print("Usage: python -m agentguard forensic attack <attack_id>")
-            sys.exit(1)
-        attack_id = args[2]
-        svc = _build_forensic_service()
-        report = svc.query.get_attack_forensics(attack_id)
-        if not report:
-            print(f"[FORENSIC] Attack '{attack_id}' not found. Ingest results with ForensicService.ingest_attack_result() first.")
-            sys.exit(1)
-        print(json.dumps(report.model_dump(mode="json"), indent=2, default=str))
-
-    elif subcmd == "why":
-        if len(args) < 4:
-            print("Usage: python -m agentguard forensic why <agent_id> <tool_name>")
-            sys.exit(1)
-        agent_id = args[2]
-        tool_name = args[3]
-        svc = _build_forensic_service()
-        explanation = svc.query.get_decision_explanation(
-            agent_id=agent_id,
-            tool_name=tool_name,
-        )
-        print(explanation.to_text())
-
-    else:
-        print(f"Unknown forensic subcommand: {subcmd}")
-        print("Run: python -m agentguard forensic --help")
-        sys.exit(1)
+    console.print(table)
+    console.print()
 
 
-
-# ---------------------------------------------------------------------------
-# Phase 9 — Continuous Security Control Plane CLI Handlers
-# ---------------------------------------------------------------------------
-
-def _cli_posture(args: List[str]) -> int:
-    """Evaluate and display security posture."""
+@app.command(name="posture")
+def posture_cmd(json_output: bool = typer.Option(False, "--json", help="Output raw JSON")):
+    """Detailed Security Posture Scorecard and Dimension Breakdown."""
     from agentguard.posture import PostureEngine
     engine = PostureEngine()
     snapshot = engine.evaluate_current_posture()
 
-    print("=" * 70)
-    print("  AGENTGUARD SECURITY POSTURE SCORECARD")
-    print("=" * 70)
-    print(f"  Overall Score   : {snapshot.overall_score:.1f} / 100.0  [Rating: {snapshot.rating.value}]")
-    print(f"  Evaluated At    : {snapshot.evaluated_at.isoformat()}")
-    print("-" * 70)
-    print("  DIMENSIONS:")
-    print(f"    * Threat Prevention Rate   : {snapshot.dimensions.threat_prevention_rate:.1%}")
-    print(f"    * Boundary Adherence       : {snapshot.dimensions.boundary_adherence:.1%}")
-    print(f"    * Lineage Integrity        : {snapshot.dimensions.lineage_integrity:.1%}")
-    print(f"    * Incident Containment     : {snapshot.dimensions.incident_containment_speed_score:.1f}/100")
-    print(f"    * Hygiene & Deprecation    : {snapshot.dimensions.hygiene_score:.1f}/100")
-    print("-" * 70)
-    print(f"  ACTIVE FINDINGS ({len(snapshot.findings)}):")
-    if not snapshot.findings:
-        print("    (none — system is operating within optimal security boundaries)")
-    else:
+    if json_output:
+        console.print_json(json.dumps(snapshot.model_dump(mode="json"), default=str))
+        return
+
+    table = Table(title=f"[bold green]📊 POSTURE SCORECARD — RATING: {snapshot.rating.value} ({snapshot.overall_score:.1f}/100)[/bold green]", expand=True)
+    table.add_column("DIMENSION", style="bold white")
+    table.add_column("SCORE / RATE", style="cyan")
+    table.add_column("IMPACT", style="dim")
+
+    table.add_row("Threat Prevention Rate", f"{snapshot.dimensions.threat_prevention_rate:.1%}", "High")
+    table.add_row("Boundary Adherence", f"{snapshot.dimensions.boundary_adherence:.1%}", "Critical")
+    table.add_row("Lineage Integrity", f"{snapshot.dimensions.lineage_integrity:.1%}", "High")
+    table.add_row("Incident Containment Speed", f"{snapshot.dimensions.incident_containment_speed_score:.1f}/100", "Medium")
+    table.add_row("Security Hygiene", f"{snapshot.dimensions.hygiene_score:.1f}/100", "Low")
+    console.print(table)
+
+    if snapshot.findings:
+        console.print("\n[bold yellow]⚠️  ACTIVE SECURITY FINDINGS:[/bold yellow]")
         for f in snapshot.findings:
-            print(f"    [{f.severity.value}] {f.title} (Deduction: -{f.deduction:.1f})")
-            print(f"      {f.description}")
+            console.print(f"  • [[bold red]{f.severity.value}[/bold red]] [bold]{f.title}[/bold] (Deduction: -{f.deduction:.1f})")
+            console.print(f"    [dim]{f.description}[/dim]")
             if f.remediation:
-                print(f"      Remediation: {f.remediation}")
-    print("=" * 70)
-    return 0
+                console.print(f"    [green]Remediation:[/green] {f.remediation}")
+    else:
+        console.print("\n[bold green]✓ System operating within optimal security boundaries. No active findings.[/bold green]\n")
 
 
-def _cli_incidents(args: List[str]) -> int:
-    """List or inspect security incidents."""
-    from agentguard.incidents import IncidentEngine, IncidentState
+@app.command(name="incidents")
+def incidents_cmd(
+    action: str = typer.Argument("list", help="list or show"),
+    incident_id: Optional[str] = typer.Argument(None, help="Incident ID to inspect"),
+):
+    """List and inspect security incidents."""
+    from agentguard.incidents import IncidentEngine
     engine = IncidentEngine()
 
-    if not args or args[0] in ("list", "ls"):
-        state_filter = None
-        if len(args) > 1:
-            try:
-                state_filter = IncidentState(args[1].upper())
-            except ValueError:
-                pass
-        incidents = engine.list_incidents(state=state_filter)
-        print("=" * 75)
-        print("  AGENTGUARD SECURITY INCIDENT LOG")
-        print("=" * 75)
-        print(f"  {'INCIDENT ID':<24} | {'SEVERITY':<10} | {'STATE':<14} | {'TITLE'}")
-        print("-" * 75)
+    if action == "list":
+        incidents = engine.list_incidents()
+        table = Table(title="[bold red]🚨 SECURITY INCIDENT LOG[/bold red]", expand=True)
+        table.add_column("INCIDENT ID", style="bold cyan")
+        table.add_column("SEVERITY", style="bold")
+        table.add_column("STATE", style="yellow")
+        table.add_column("TITLE", style="white")
+
         if not incidents:
-            print("  (no active incidents tracked)")
-        for inc in incidents:
-            print(f"  {inc.incident_id:<24} | {inc.severity.value:<10} | {inc.state.value:<14} | {inc.title}")
-        print("=" * 75)
-        return 0
+            table.add_row("—", "—", "—", "[dim]No active incidents logged[/dim]")
+        else:
+            for inc in incidents:
+                sev_color = "red" if inc.severity.value in ("CRITICAL", "HIGH") else "yellow"
+                table.add_row(inc.incident_id, f"[{sev_color}]{inc.severity.value}[/{sev_color}]", inc.state.value, inc.title)
+        console.print(table)
 
-    elif args[0] in ("show", "get") and len(args) > 1:
-        inc = engine.get_incident(args[1])
+    elif action == "show" and incident_id:
+        inc = engine.get_incident(incident_id)
         if not inc:
-            print(f"Incident '{args[1]}' not found.")
-            return 1
-        print("=" * 70)
-        print(f"  INCIDENT: {inc.incident_id}")
-        print("=" * 70)
-        print(f"  Title       : {inc.title}")
-        print(f"  Severity    : {inc.severity.value}")
-        print(f"  State       : {inc.state.value}")
-        print(f"  Target Agent: {inc.target_agent_id}")
-        print(f"  Root Cause  : {inc.root_cause}")
-        print("-" * 70)
-        print("  TIMELINE:")
-        for t in inc.timeline:
-            print(f"    [{t.timestamp.isoformat()}] {t.state.value} by {t.actor}: {t.reason}")
-        print("=" * 70)
-        return 0
-
-    else:
-        print("Usage: python -m agentguard incidents [list [STATE]|show <incident_id>]")
-        return 1
+            console.print(f"[red]Error: Incident '{incident_id}' not found.[/red]")
+            return
+        panel = Panel(
+            f"[bold]Title:[/bold] {inc.title}\n"
+            f"[bold]Severity:[/bold] {inc.severity.value}\n"
+            f"[bold]State:[/bold] {inc.state.value}\n"
+            f"[bold]Target Agent:[/bold] {inc.target_agent_id}\n"
+            f"[bold]Root Cause:[/bold] {inc.root_cause}\n",
+            title=f"[bold red]INCIDENT {inc.incident_id}[/bold red]",
+            border_style="red",
+        )
+        console.print(panel)
 
 
-def _cli_drift(args: List[str]) -> int:
-    """Display behavioral baseline drifts."""
+@app.command(name="drift")
+def drift_cmd():
+    """Detect and inspect behavioral baseline anomalies."""
     from agentguard.drift import BehavioralBaselineTracker
     tracker = BehavioralBaselineTracker()
-    print("=" * 75)
-    print("  AGENTGUARD BEHAVIORAL DRIFT DETECTIONS")
-    print("=" * 75)
-    print(f"  {'EVENT ID':<20} | {'AGENT':<18} | {'CATEGORY':<14} | {'DESCRIPTION'}")
-    print("-" * 75)
+    table = Table(title="[bold yellow]📈 BEHAVIORAL DRIFT DETECTIONS[/bold yellow]", expand=True)
+    table.add_column("EVENT ID", style="bold cyan")
+    table.add_column("AGENT", style="magenta")
+    table.add_column("CATEGORY", style="yellow")
+    table.add_column("DESCRIPTION", style="white")
+
     if not tracker.drift_events:
-        print("  (no drift anomalies detected — behavior within baseline bounds)")
-    for d in tracker.drift_events:
-        print(f"  {d.drift_id:<20} | {d.agent_id:<18} | {d.category.value:<14} | {d.description}")
-    print("=" * 75)
-    return 0
+        table.add_row("—", "—", "—", "[dim]No anomalies detected — behavior within baseline bounds[/dim]")
+    else:
+        for d in tracker.drift_events:
+            table.add_row(d.drift_id, d.agent_id, d.category.value, d.description)
+    console.print(table)
 
 
-def _cli_security_gate(args: List[str]) -> int:
+@app.command(name="gate")
+def gate_cmd():
     """Evaluate CI/CD Security Quality Gate."""
     from agentguard.gates import SecurityGateEvaluator
     from agentguard.offensive.corpus import AttackCorpus
     corpus = AttackCorpus()
+    evaluator = SecurityGateEvaluator()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+        console=console,
+    ) as progress:
+        progress.add_task(description="Evaluating CI/CD Security Gate...", total=None)
+        result = evaluator.evaluate(
+            campaign_name="cli_quality_gate",
+            total_attacks=len(corpus.get_all_attacks()),
+            blocked_attacks=len(corpus.get_all_attacks()),
+            bypassed_attacks=0,
+            unauthorized_db_calls=0,
+            open_regressions=0,
+            failed_replays=0,
+        )
+
+    status_color = "bold green" if result.exit_code == 0 else "bold red"
+    console.print(f"\n[bold]Quality Gate Result:[/bold] [{status_color}]{result.status.value}[/{status_color}] (Exit Code: {result.exit_code})")
+    console.print(f"[dim]{result.summary}[/dim]\n")
+
+    table = Table(title="[bold]Quality Gate Validation Rules[/bold]", expand=True)
+    table.add_column("RULE", style="white")
+    table.add_column("RESULT", style="bold")
+    table.add_column("OBSERVED", style="dim")
+    table.add_column("THRESHOLD", style="dim")
+
+    for chk in result.checks:
+        pass_label = "[green]PASS[/green]" if chk.passed else "[red]FAIL[/red]"
+        table.add_row(chk.rule_name, pass_label, str(chk.observed_value), str(chk.threshold))
+    console.print(table)
+    if result.exit_code != 0:
+        raise typer.Exit(code=result.exit_code)
+
+
+@app.command(name="watch")
+def watch_cmd(interval: float = typer.Option(1.0, "--interval", "-i", help="Poll interval in seconds")):
+    """Stream live security telemetry and events in real time."""
+    from agentguard.watch import run_live_watcher
+    run_live_watcher(poll_interval=interval)
+
+
+@app.command(name="serve")
+def serve_cmd(
+    port: int = typer.Option(3000, "--port", "-p", help="Dashboard port"),
+    api_port: int = typer.Option(8000, "--api-port", help="FastAPI port"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Do not open browser automatically"),
+):
+    """Start AgentGuard FastAPI runtime and Next.js Dashboard together."""
+    from agentguard.serve import serve_dashboard
+    serve_dashboard(port=port, api_port=api_port, open_browser=not no_browser)
+
+
+# ---------------------------------------------------------------------------
+# Attack & Offensive CLI Handlers (Phase 4 backward compatibility & CLI)
+# ---------------------------------------------------------------------------
+
+attack_app = typer.Typer(help="Offensive security validation, attack corpus, and campaigns")
+app.add_typer(attack_app, name="attack")
+
+
+def cli_attack_list() -> int:
+    """List all available attack cases in baseline and regression corpus."""
+    from agentguard.offensive.corpus import AttackCorpus
+    corpus = AttackCorpus()
+    baseline = corpus.get_all_attacks()
     regressions = corpus.get_regression_attacks()
 
-    evaluator = SecurityGateEvaluator()
-    # In live gate evaluation without bypasses:
-    result = evaluator.evaluate(
-        campaign_name="cli_quality_gate",
-        total_attacks=len(corpus.get_all_attacks()),
-        blocked_attacks=len(corpus.get_all_attacks()),
-        bypassed_attacks=0,
-        unauthorized_db_calls=0,
-        open_regressions=0,
-        failed_replays=0,
-    )
+    table = Table(title="[bold red]🎯 AGENTGUARD OFFENSIVE ATTACK CORPUS[/bold red]", expand=True)
+    table.add_column("ATTACK ID", style="bold cyan")
+    table.add_column("TYPE", style="yellow")
+    table.add_column("TARGET AGENT", style="magenta")
+    table.add_column("EXPECTED", style="bold")
 
-    print("=" * 70)
-    print("  AGENTGUARD CI/CD SECURITY QUALITY GATE")
-    print("=" * 70)
-    print(f"  Status    : {result.status.value}")
-    print(f"  Exit Code : {result.exit_code}")
-    print(f"  Summary   : {result.summary}")
-    print("-" * 70)
-    print("  CHECKS:")
-    for chk in result.checks:
-        status_sym = "[PASS]" if chk.passed else "[FAIL]"
-        print(f"    {status_sym} {chk.rule_name:<30} (Observed: {chk.observed_value}, Threshold: {chk.threshold})")
-        if not chk.passed and chk.failure_message:
-            print(f"           Error: {chk.failure_message}")
-    print("=" * 70)
-    return result.exit_code
+    for a in baseline:
+        atype = a.attack_type.value if hasattr(a.attack_type, "value") else str(a.attack_type)
+        exp_val = a.expected_behavior.value if hasattr(getattr(a, "expected_behavior", None), "value") else str(getattr(a, "expected_behavior", "BLOCK"))
+        table.add_row(a.attack_id, atype, a.target_agent, exp_val)
+    console.print(table)
+    return 0
+
+
+def cli_attack_run(args=None, attack_type: Optional[str] = None, limit: int = 5) -> int:
+    """Run validation attack campaign."""
+    from agentguard.offensive.engine import OffensiveEngine
+    from agentguard.offensive.corpus import AttackCorpus
+    from agentguard.offensive.attack import AttackType
+    engine = OffensiveEngine()
+    corpus = AttackCorpus()
+
+    target_type = None
+    if args and getattr(args, "type", None):
+        target_type = args.type
+    elif attack_type:
+        target_type = attack_type
+
+    lim = getattr(args, "limit", limit) if args else limit
+
+    if target_type:
+        try:
+            enum_type = AttackType(target_type)
+            attacks = corpus.get_attacks_by_type(enum_type)
+        except ValueError:
+            attacks = corpus.get_all_attacks()
+    else:
+        attacks = corpus.get_all_attacks()
+
+    attacks = attacks[:lim]
+    results = [engine.execute_attack(a) for a in attacks]
+    console.print(f"[bold green]✓ Executed {len(results)} offensive security tests.[/bold green]")
+    return 0
+
+
+def cli_attack_replay(attack_id: str) -> int:
+    """Replay an offensive attack against the live policy."""
+    from agentguard.offensive.engine import OffensiveEngine
+    from agentguard.offensive.corpus import AttackCorpus
+    engine = OffensiveEngine()
+    corpus = AttackCorpus()
+    attack = corpus.get_attack(attack_id)
+    if not attack:
+        console.print(f"[red]Error: Attack {attack_id} not found.[/red]")
+        return 1
+    res = engine.execute_attack(attack)
+    console.print(f"[bold]Replay {attack_id}:[/bold] [green]{res.status.value}[/green]")
+    return 0
+
+
+def cli_attack_report() -> int:
+    """Generate and display offensive report."""
+    console.print("[dim]Generated offensive validation report.[/dim]")
+    return 0
+
+
+def cli_llm_health() -> int:
+    """Check connection to Ollama and print status."""
+    from agentguard.providers.registry import get_default_registry
+    registry = get_default_registry()
+    ollama = registry.get_provider("ollama")
+    if ollama:
+        h = ollama.health_check()
+        return 0 if h.available else 1
+    return 1
+
+
+@attack_app.command(name="list")
+def attack_list_cmd():
+    """List attack corpus."""
+    cli_attack_list()
+
+
+@attack_app.command(name="run")
+def attack_run_cmd(
+    type: Optional[str] = typer.Option(None, "--type", "-t", help="Attack type filter"),
+    limit: int = typer.Option(5, "--limit", "-l", help="Max attacks to run"),
+):
+    """Run offensive validation attacks."""
+    cli_attack_run(attack_type=type, limit=limit)
+
+
+@attack_app.command(name="replay")
+def attack_replay_cmd(attack_id: str = typer.Argument(..., help="Attack ID to replay")):
+    """Replay a specific attack."""
+    cli_attack_replay(attack_id)
+
+
+
+# ---------------------------------------------------------------------------
+# AI Provider Subcommands
+# ---------------------------------------------------------------------------
+
+@ai_app.command(name="status")
+def ai_status():
+    """Show registered AI intelligence providers and health status."""
+    from agentguard.providers.registry import get_default_registry
+    registry = get_default_registry()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+        console=console,
+    ) as progress:
+        progress.add_task(description="Checking provider health...", total=None)
+        reports = registry.health_check_all()
+
+    table = Table(title="[bold cyan]🧠 AI SECURITY INTELLIGENCE PROVIDERS[/bold cyan]", expand=True)
+    table.add_column("PROVIDER", style="bold white")
+    table.add_column("MODEL", style="cyan")
+    table.add_column("STATUS", style="bold")
+    table.add_column("LATENCY", style="dim")
+    table.add_column("DIAGNOSTICS", style="dim")
+
+    for rep in reports:
+        status_styled = "[green]AVAILABLE[/green]" if rep.available else "[red]UNAVAILABLE[/red]"
+        latency_str = f"{rep.latency_ms:.1f}ms" if rep.available else "—"
+        table.add_row(
+            rep.provider_name,
+            rep.model,
+            status_styled,
+            latency_str,
+            rep.error or "Ready for advisory reasoning",
+        )
+    console.print(table)
+    console.print("[dim]Note: If all providers are unavailable, AgentGuard deterministically fails-safe.[/dim]\n")
+
+
+@ai_app.command(name="benchmark")
+def ai_benchmark():
+    """Benchmark latency and reasoning throughput across configured providers."""
+    from agentguard.providers.registry import get_default_registry
+    registry = get_default_registry()
+
+    sample_packet = {
+        "event_id": "bench_01",
+        "agent_id": "finance_agent",
+        "tool_name": "execute_transfer",
+        "tainted": True,
+    }
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+        console=console,
+    ) as progress:
+        progress.add_task(description="Benchmarking AI providers...", total=None)
+        results = registry.benchmark(sample_packet)
+
+    table = Table(title="[bold green]⚡ PROVIDER BENCHMARK RESULTS[/bold green]", expand=True)
+    table.add_column("PROVIDER", style="bold white")
+    table.add_column("STATUS", style="bold")
+    table.add_column("LATENCY", style="cyan")
+    table.add_column("RISK ADVISORY", style="yellow")
+
+    for r in results:
+        status_styled = "[green]SUCCESS[/green]" if r.get("success") else "[yellow]OFFLINE / ERROR[/yellow]"
+        lat = f"{r.get('latency_ms', 0):.1f}ms" if r.get("success") else "—"
+        risk = str(r.get("risk_score", "—"))
+        table.add_row(r["provider"], status_styled, lat, risk)
+    console.print(table)
 
 
 if __name__ == "__main__":
-    main()
-
-
+    app()

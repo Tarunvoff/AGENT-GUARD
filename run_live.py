@@ -29,15 +29,15 @@ def main():
     env["PYTHONPATH"] = str(SDK_DIR)
 
     # 1. Start backend
-    print("\n[1/2] Starting AgentGuard Backend API on :8000...")
+    print("\n[1/2] Starting ActShield Backend API on :8000...")
     backend_proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "agentguard.api.server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+        [sys.executable, "-m", "uvicorn", "actshield.api.server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
         cwd=str(ROOT_DIR),
         env=env,
     )
 
     # 2. Start frontend
-    print("[2/2] Starting AgentGuard Dashboard UI on :3000...")
+    print("[2/2] Starting ActShield Dashboard UI on :3000...")
     npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
     frontend_proc = subprocess.Popen(
         [npm_cmd, "run", "dev"],
@@ -46,8 +46,9 @@ def main():
     )
 
     print("\n🚀 Both services are running!")
-    print("   👉 Open http://localhost:3000 to access the AgentGuard Dashboard.")
+    print("   👉 Open http://localhost:3000 to access the ActShield Dashboard.")
     print("   👉 Open http://localhost:8000/docs to explore the FastAPI Swagger API.")
+
     print("\nPress Ctrl+C to terminate both servers.\n")
 
     try:

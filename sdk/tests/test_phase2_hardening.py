@@ -3,21 +3,21 @@
 import os
 from typing import Any, Dict, List, Optional
 import pytest
-from agentguard.agents.identity import AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource, ContextTrustLevel
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction
-from agentguard.policy.intent import (
+from actshield.agents.identity import AgentTrustLevel
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource, ContextTrustLevel
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction
+from actshield.policy.intent import (
     DeterministicIntentAnalyzer,
     IntentAlignmentResult,
     IntentAlignmentStatus,
     IntentAnalyzer,
 )
 
-from agentguard.risk.models import RiskFactorBreakdown
-from agentguard.tools.tool import SensitivityLevel
-from agentguard.tracing.events import EventType
+from actshield.risk.models import RiskFactorBreakdown
+from actshield.tools.tool import SensitivityLevel
+from actshield.tracing.events import EventType
 from examples.multi_agent.agents import setup_agents
 from examples.multi_agent.attack_scenario import (
     AttackResult,
@@ -40,7 +40,7 @@ from examples.multi_agent.tools import EnterpriseToolSuite
 # 1. External MCP is Untrusted but Clean
 # -----------------------------------------------------------------------------
 def test_external_mcp_untrusted_but_clean():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     planner, researcher, analyst, data_agent = setup_agents(guard)
@@ -68,7 +68,7 @@ def test_external_mcp_untrusted_but_clean():
 # 2. External MCP with Tainted Context
 # -----------------------------------------------------------------------------
 def test_external_mcp_tainted_context():
-    guard = AgentGuard()
+    guard = ActShield()
     ctx = guard.context(
         data="Injected adversarial directive",
         source=ContextSource.EXTERNAL_MCP,
@@ -85,7 +85,7 @@ def test_external_mcp_tainted_context():
 # 3. Trust and Taint are Independent
 # -----------------------------------------------------------------------------
 def test_trust_and_taint_are_independent():
-    guard = AgentGuard()
+    guard = ActShield()
     
     # 4 distinct combinations
     c1 = guard.context(data="c1", source=ContextSource.USER, trust_level="trusted", taint_state=TaintState.CLEAN)
@@ -103,7 +103,7 @@ def test_trust_and_taint_are_independent():
 # 4. Original Intent Preserved Across Multi-Agent Handoffs
 # -----------------------------------------------------------------------------
 def test_original_intent_preserved_across_hops():
-    guard = AgentGuard()
+    guard = ActShield()
     planner, researcher, analyst, data_agent = setup_agents(guard)
     user_intent = "Analyze FY2026 financial performance for ACME Global using public info"
 
@@ -261,7 +261,7 @@ def test_variant_5_semantic_escalation():
 # 17. Taint Cannot Be Laundered Through New Context Without Sanitization
 # -----------------------------------------------------------------------------
 def test_taint_cannot_be_laundered_through_new_context():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     # Create an auditor agent with legitimate customer_db.read authority
@@ -305,7 +305,7 @@ def test_taint_cannot_be_laundered_through_new_context():
 # 18. Explicit Auditable Sanitization Clears Taint
 # -----------------------------------------------------------------------------
 def test_explicit_sanitization_clears_taint():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     planner, researcher, analyst, data_agent = setup_agents(guard)
@@ -379,7 +379,7 @@ def test_attack_replay_verification():
 # 21. Cross-Framework Metadata Preservation
 # -----------------------------------------------------------------------------
 def test_cross_framework_metadata_preservation():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(
         name="LangGraphWorker",
         framework="langgraph",
@@ -412,7 +412,7 @@ def test_custom_intent_analyzer_protocol_registration():
                 )
             return IntentAlignmentResult(status=IntentAlignmentStatus.ALIGNED, score=0.0)
 
-    guard = AgentGuard(intent_analyzer=CustomRegexIntentAnalyzer())
+    guard = ActShield(intent_analyzer=CustomRegexIntentAnalyzer())
     res = guard.policy.intent_analyzer.analyze(
         original_intent="Analyze financial report",
         tool_name="customer_db.read",
@@ -477,7 +477,7 @@ def test_causal_graph_complete_edge_relations():
 # 26. Sanitized Context Allows Subsequent Tool Processing
 # -----------------------------------------------------------------------------
 def test_sanitized_context_allows_subsequent_tool_processing():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     planner, researcher, analyst, data_agent = setup_agents(guard)

@@ -1,11 +1,11 @@
 """Phase 4 Tests — Attack models, schemas, and mutation engine."""
 
 import unittest
-from agentguard.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
-from agentguard.offensive.campaign import AttackCampaign, CampaignSummary
-from agentguard.offensive.mutation import MutationEngine, MutationStrategy
-from agentguard.offensive.results import AttackStatus, ExecutionEvidence, OffensiveAttackResult
-from agentguard.offensive.target import AttackTarget, TargetEnvironment
+from actshield.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
+from actshield.offensive.campaign import AttackCampaign, CampaignSummary
+from actshield.offensive.mutation import MutationEngine, MutationStrategy
+from actshield.offensive.results import AttackStatus, ExecutionEvidence, OffensiveAttackResult
+from actshield.offensive.target import AttackTarget, TargetEnvironment
 
 
 class TestPhase4AttackModels(unittest.TestCase):

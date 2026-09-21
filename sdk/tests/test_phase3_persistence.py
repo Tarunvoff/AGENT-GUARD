@@ -5,12 +5,12 @@ import os
 import tempfile
 import pytest
 
-from agentguard.client import AgentGuard
-from agentguard.decisions.decision import DecisionAction, SecurityDecision
-from agentguard.persistence.siem import SIEMExporter, SIEMFormat
-from agentguard.persistence.storage import PostgresStorage, SQLiteStorage
-from agentguard.risk.models import RiskLevel
-from agentguard.tracing.events import EventType, SecurityEvent
+from actshield.client import ActShield
+from actshield.decisions.decision import DecisionAction, SecurityDecision
+from actshield.persistence.siem import SIEMExporter, SIEMFormat
+from actshield.persistence.storage import PostgresStorage, SQLiteStorage
+from actshield.risk.models import RiskLevel
+from actshield.tracing.events import EventType, SecurityEvent
 
 
 # -----------------------------------------------------------------------------
@@ -22,7 +22,7 @@ def test_sqlite_storage_event_persistence():
 
     try:
         storage = SQLiteStorage(db_path)
-        guard = AgentGuard(storage=storage)
+        guard = ActShield(storage=storage)
         agent = guard.agent(name="StorageAgent", capabilities=["search"])
 
         with guard.task(intent="Test persistent audit storage") as task:
@@ -53,7 +53,7 @@ def test_sqlite_storage_event_persistence():
 # -----------------------------------------------------------------------------
 def test_sqlite_storage_decision_persistence():
     storage = SQLiteStorage(":memory:")
-    guard = AgentGuard(storage=storage)
+    guard = ActShield(storage=storage)
     agent = guard.agent(name="DecAgent", capabilities=["read"])
 
     @guard.protected_tool(name="sample_tool", required_capabilities=["read"])
@@ -89,7 +89,7 @@ def test_sqlite_storage_causal_trace_graph():
 # 4. SIEM Exporter: JSON Lines Format
 # -----------------------------------------------------------------------------
 def test_siem_exporter_json_lines():
-    guard = AgentGuard()
+    guard = ActShield()
     with guard.task(intent="SIEM export test") as task:
         guard.emit_event(
             event_type=EventType.SECURITY_DECISION,
@@ -104,15 +104,15 @@ def test_siem_exporter_json_lines():
 
     first_obj = json.loads(lines[0])
     assert "@timestamp" in first_obj
-    assert "agentguard" in first_obj
-    assert first_obj["agentguard"]["trace_id"] == task.trace_id
+    assert "actshield" in first_obj
+    assert first_obj["actshield"]["trace_id"] == task.trace_id
 
 
 # -----------------------------------------------------------------------------
 # 5. SIEM Exporter: Common Event Format (CEF)
 # -----------------------------------------------------------------------------
 def test_siem_exporter_cef_format():
-    guard = AgentGuard()
+    guard = ActShield()
     with guard.task(intent="CEF export test") as task:
         guard.emit_event(
             event_type=EventType.CONTEXT_SANITIZED,
@@ -122,7 +122,7 @@ def test_siem_exporter_cef_format():
 
     events = guard.tracer.get_events(task.trace_id)
     cef_output = SIEMExporter.to_cef(events)
-    assert "CEF:0|AgentGuard|AgentGuard-SDK|0.3.0|" in cef_output
+    assert "CEF:0|ActShield|ActShield-SDK|0.3.0|" in cef_output
     assert f"cs1={task.trace_id}" in cef_output
 
 
@@ -130,7 +130,7 @@ def test_siem_exporter_cef_format():
 # 6. SIEM Exporter: Syslog RFC 5424 Format
 # -----------------------------------------------------------------------------
 def test_siem_exporter_syslog_format():
-    guard = AgentGuard()
+    guard = ActShield()
     with guard.task(intent="Syslog export test") as task:
         guard.emit_event(
             event_type=EventType.TOOL_REQUESTED,
@@ -141,7 +141,7 @@ def test_siem_exporter_syslog_format():
     events = guard.tracer.get_events(task.trace_id)
     syslog_output = SIEMExporter.to_syslog(events)
     assert "<134>1" in syslog_output
-    assert "agentguard-runtime security-audit" in syslog_output
+    assert "actshield-runtime security-audit" in syslog_output
     assert f'trace_id="{task.trace_id}"' in syslog_output
 
 
@@ -150,7 +150,7 @@ def test_siem_exporter_syslog_format():
 # -----------------------------------------------------------------------------
 def test_postgres_storage_interface():
     pg = PostgresStorage("postgresql://test:test@localhost/testdb")
-    guard = AgentGuard(storage=pg)
+    guard = ActShield(storage=pg)
     with guard.task(intent="Test postgres interface"):
         pass
     assert pg.count_events() >= 1

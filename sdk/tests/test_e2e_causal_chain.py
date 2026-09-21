@@ -1,11 +1,11 @@
 """End-to-end integration test for full causal chain reconstruction."""
 
 import json
-from agentguard.agents.identity import AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.tools.tool import Resource, SensitivityLevel
+from actshield.agents.identity import AgentTrustLevel
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.tools.tool import Resource, SensitivityLevel
 
 
 def test_e2e_causal_chain_user_planner_researcher_dataagent_tool():
@@ -13,7 +13,7 @@ def test_e2e_causal_chain_user_planner_researcher_dataagent_tool():
     User -> Planner -> Researcher -> DataAgent -> Tool -> Resource -> Decision
     and asserts that the final reconstructed causal graph captures every link.
     """
-    guard = AgentGuard()
+    guard = ActShield()
 
     # 1. Register Agents
     planner = guard.agent(

@@ -1,12 +1,12 @@
 """Tests for delegation, recursive delegation, and monotonic authority containment."""
 
 import pytest
-from agentguard.client import AgentGuard
-from agentguard.tracing.correlation import get_current_agent_id, get_current_delegation_id
+from actshield.client import ActShield
+from actshield.tracing.correlation import get_current_agent_id, get_current_delegation_id
 
 
 def test_single_delegation():
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["plan", "search", "read"])
     researcher = guard.agent(name="researcher", capabilities=["search", "read", "download"])
 
@@ -26,7 +26,7 @@ def test_recursive_deep_delegation():
     """Test deep recursive delegation without hardcoded depth limit:
     Planner -> Researcher -> Analyst -> DataAgent -> Parser
     """
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["plan", "search", "analyze", "data_fetch", "parse"])
     researcher = guard.agent(name="researcher", capabilities=["search", "analyze", "data_fetch", "parse"])
     analyst = guard.agent(name="analyst", capabilities=["analyze", "data_fetch", "parse"])
@@ -54,7 +54,7 @@ def test_recursive_deep_delegation():
 
 def test_monotonic_authority_reduction_violation():
     """Delegator attempting to grant capabilities it does not hold must fail."""
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["search"])
     researcher = guard.agent(name="researcher", capabilities=["admin_delete", "search"])
 

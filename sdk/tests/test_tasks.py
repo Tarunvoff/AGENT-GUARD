@@ -1,13 +1,13 @@
 """Tests for task lifecycle, scoping, and nested tasks."""
 
 import pytest
-from agentguard.client import AgentGuard
-from agentguard.tasks.task import TaskStatus
-from agentguard.tracing.correlation import get_current_task_id, get_current_trace_id
+from actshield.client import ActShield
+from actshield.tasks.task import TaskStatus
+from actshield.tracing.correlation import get_current_task_id, get_current_trace_id
 
 
 def test_task_context_lifecycle():
-    guard = AgentGuard()
+    guard = ActShield()
 
     assert get_current_trace_id() is None
     assert get_current_task_id() is None
@@ -37,7 +37,7 @@ def test_task_context_lifecycle():
 
 
 def test_nested_tasks():
-    guard = AgentGuard()
+    guard = ActShield()
 
     with guard.task(intent="Parent Task", initiating_user="bob") as parent:
         with guard.task(intent="Child Subtask") as child:
@@ -49,7 +49,7 @@ def test_nested_tasks():
 
 
 def test_task_failure_handling():
-    guard = AgentGuard()
+    guard = ActShield()
 
     with pytest.raises(ValueError, match="simulated failure"):
         with guard.task(intent="Failing Task") as task:

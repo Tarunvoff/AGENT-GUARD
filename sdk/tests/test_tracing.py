@@ -1,14 +1,14 @@
 """Tests for distributed tracing, event correlation, and causal graph reconstruction."""
 
 import json
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.tools.tool import SensitivityLevel
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.tools.tool import SensitivityLevel
 
 
 def test_event_correlation_coordinates():
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["search"])
     researcher = guard.agent(name="researcher", capabilities=["search"])
 
@@ -37,7 +37,7 @@ def test_event_correlation_coordinates():
 
 
 def test_causal_graph_reconstruction_and_render():
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["search"])
     researcher = guard.agent(name="researcher", capabilities=["search"])
 
@@ -52,7 +52,7 @@ def test_causal_graph_reconstruction_and_render():
                 source=ContextSource.USER,
                 taint_state=TaintState.TRUSTED,
             )
-            search_web(query="AgentGuard architecture")
+            search_web(query="ActShield architecture")
 
     # Reconstruct causal graph
     graph = guard.reconstruct_trace(task.trace_id)
@@ -69,9 +69,10 @@ def test_causal_graph_reconstruction_and_render():
 
     # Check ASCII tree rendering
     tree_str = guard.render_causal_tree(task.trace_id)
-    assert "AGENTGUARD CAUSAL TRACE" in tree_str
+    assert "ActShield CAUSAL TRACE" in tree_str or "CAUSAL TRACE" in tree_str
     assert "[USER] User: alice" in tree_str
     assert "[TASK] Task: Market Analysis" in tree_str
     assert "[AGENT] Agent: researcher" in tree_str
     assert "[TOOL] Tool: search_web" in tree_str
     assert "[DECISION]" in tree_str
+

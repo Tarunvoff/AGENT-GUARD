@@ -8,16 +8,16 @@ import json
 import unittest
 from unittest.mock import patch
 
-from agentguard.llm_config import LLMConfig
-from agentguard.integrations.ai_secura import SecurityContext
-from agentguard.integrations.ai_secura_analysis import (
+from actshield.llm_config import LLMConfig
+from actshield.integrations.ai_secura import SecurityContext
+from actshield.integrations.ai_secura_analysis import (
     AISecuraAnalysis,
     ThreatSeverity,
     IntentAlignment,
     AIRecommendation,
     AttackTechnique,
 )
-from agentguard.integrations.ollama_adapter import OllamaAISecuraAdapter
+from actshield.integrations.ollama_adapter import OllamaAISecuraAdapter
 
 
 def _make_mock_response(threat_type="indirect_prompt_injection",
@@ -122,7 +122,7 @@ class TestPromptInjectionInPacket(unittest.TestCase):
     """Verify that the security packet correctly preserves adversarial content as data."""
 
     def test_injection_preserved_in_packet(self):
-        from agentguard.integrations.security_packet import build_security_packet
+        from actshield.integrations.security_packet import build_security_packet
         ctx = SecurityContext(
             trace_id="tr_test",
             task_intent="Normal task",

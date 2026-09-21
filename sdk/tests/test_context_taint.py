@@ -1,12 +1,12 @@
 """Tests for context creation, provenance tracking, and taint propagation."""
 
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
 
 
 def test_context_creation_and_provenance():
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["search"])
 
     with guard.task(intent="Ingest MCP document"):
@@ -29,7 +29,7 @@ def test_context_creation_and_provenance():
 
 
 def test_taint_propagation_across_agent_handoff():
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["search"])
     researcher = guard.agent(name="researcher", capabilities=["search", "summarize"])
     analyst = guard.agent(name="analyst", capabilities=["analyze"])

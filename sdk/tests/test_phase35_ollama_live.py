@@ -11,15 +11,15 @@ import urllib.request
 import urllib.error
 import pytest
 
-from agentguard.llm_config import LLMConfig
-from agentguard.integrations.ai_secura import SecurityContext
-from agentguard.integrations.ai_secura_analysis import (
+from actshield.llm_config import LLMConfig
+from actshield.integrations.ai_secura import SecurityContext
+from actshield.integrations.ai_secura_analysis import (
     AISecuraAnalysis,
     ThreatSeverity,
     IntentAlignment,
     AIRecommendation,
 )
-from agentguard.integrations.ollama_adapter import OllamaAISecuraAdapter
+from actshield.integrations.ollama_adapter import OllamaAISecuraAdapter
 
 
 def _ollama_available() -> bool:

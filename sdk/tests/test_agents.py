@@ -1,9 +1,9 @@
 """Tests for Agent creation, identity, and capabilities."""
 
 import pytest
-from agentguard.agents.agent import Agent
-from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
-from agentguard.client import AgentGuard
+from actshield.agents.agent import Agent
+from actshield.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
+from actshield.client import ActShield
 
 
 def test_agent_identity_creation():
@@ -38,7 +38,7 @@ def test_agent_wildcard_capabilities():
 
 
 def test_guard_agent_factory():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(
         name="research_agent",
         framework="custom",

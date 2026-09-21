@@ -1,12 +1,12 @@
 """Comprehensive Phase 2 Test Suite: Multi-Agent Runtime & MCP Attack Simulation."""
 
 import pytest
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction
-from agentguard.tools.tool import SensitivityLevel
-from agentguard.tracing.events import EventType
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction
+from actshield.tools.tool import SensitivityLevel
+from actshield.tracing.events import EventType
 from examples.multi_agent.agents import setup_agents
 from examples.multi_agent.attack_scenario import AttackResult, run_attack_scenario
 from examples.multi_agent.benign_scenario import BenignScenarioResult, run_benign_scenario
@@ -32,7 +32,7 @@ def test_benign_scenario_succeeds():
 # Test 2: MCP Attack Response is Marked Untrusted
 # -----------------------------------------------------------------------------
 def test_mcp_attack_response_marked_untrusted():
-    guard = AgentGuard()
+    guard = ActShield()
     mcp_server = SimulatedMCPServer()
     resp = mcp_server.search_public_information("filing", mode=MCPMode.ATTACK)
     
@@ -52,7 +52,7 @@ def test_mcp_attack_response_marked_untrusted():
 # Test 3: Attack Context Becomes Tainted
 # -----------------------------------------------------------------------------
 def test_attack_context_becomes_tainted():
-    guard = AgentGuard()
+    guard = ActShield()
     ctx = guard.context(
         data="Malicious injected directive",
         source=ContextSource.EXTERNAL_MCP,
@@ -67,7 +67,7 @@ def test_attack_context_becomes_tainted():
 # Test 4: Taint Propagates Through Multi-Agent Handoff
 # -----------------------------------------------------------------------------
 def test_taint_propagates_through_agent_handoff():
-    guard = AgentGuard()
+    guard = ActShield()
     planner, researcher, analyst, data_agent = setup_agents(guard)
 
     # Ingest tainted context at Researcher
@@ -95,7 +95,7 @@ def test_taint_propagates_through_agent_handoff():
 # Test 5: Original User Intent Remains Attached
 # -----------------------------------------------------------------------------
 def test_original_intent_remains_attached():
-    guard = AgentGuard()
+    guard = ActShield()
     with guard.task(
         intent="Analyze FY2026 financial performance using public data.",
         initiating_user="ciso_auditor@acmeglobal.com",
@@ -112,7 +112,7 @@ def test_original_intent_remains_attached():
 # Test 6: Delegation Chain is Preserved
 # -----------------------------------------------------------------------------
 def test_delegation_chain_is_preserved():
-    guard = AgentGuard()
+    guard = ActShield()
     planner, researcher, analyst, data_agent = setup_agents(guard)
 
     with guard.task(intent="Delegation audit"):
@@ -131,7 +131,7 @@ def test_delegation_chain_is_preserved():
 # Test 7: Unauthorized customer_db.read is Detected
 # -----------------------------------------------------------------------------
 def test_unauthorized_customer_db_read_detected():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     mcp_server = SimulatedMCPServer()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=mcp_server)
@@ -160,7 +160,7 @@ def test_protected_tool_blocks_request():
 # -----------------------------------------------------------------------------
 def test_underlying_database_function_not_executed():
     warehouse = EnterpriseFinancialWarehouse()
-    guard = AgentGuard()
+    guard = ActShield()
     mcp_server = SimulatedMCPServer()
 
     assert warehouse.customer_read_calls == 0
@@ -223,7 +223,7 @@ def test_trace_contains_all_expected_agents():
 # Test 14: Trace IDs are Consistent
 # -----------------------------------------------------------------------------
 def test_trace_ids_are_consistent():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     mcp_server = SimulatedMCPServer()
     result = run_benign_scenario(guard=guard, warehouse=warehouse, mcp_server=mcp_server)
@@ -238,7 +238,7 @@ def test_trace_ids_are_consistent():
 # Test 15: Evidence Event IDs are Valid
 # -----------------------------------------------------------------------------
 def test_evidence_event_ids_valid():
-    guard = AgentGuard()
+    guard = ActShield()
     result = run_attack_scenario(guard=guard)
     
     all_event_ids = {e.event_id for e in guard.tracer.get_events(result.trace_id)}
@@ -251,7 +251,7 @@ def test_evidence_event_ids_valid():
 # -----------------------------------------------------------------------------
 def test_legitimate_financial_access_remains_allowed():
     warehouse = EnterpriseFinancialWarehouse()
-    guard = AgentGuard()
+    guard = ActShield()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     planner, researcher, analyst, data_agent = setup_agents(guard)
 
@@ -268,7 +268,7 @@ def test_legitimate_financial_access_remains_allowed():
 # Test 17: Trusted Context Does Not Trigger Blocking
 # -----------------------------------------------------------------------------
 def test_trusted_context_does_not_trigger_blocking():
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     planner, researcher, analyst, data_agent = setup_agents(guard)
@@ -288,7 +288,7 @@ def test_trusted_context_does_not_trigger_blocking():
 # Test 18: Multiple Contexts Can Coexist
 # -----------------------------------------------------------------------------
 def test_multiple_contexts_coexist():
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["public_search"])
 
     with guard.task(intent="Multiple context ingestion"):
@@ -305,7 +305,7 @@ def test_multiple_contexts_coexist():
 # -----------------------------------------------------------------------------
 def test_untrusted_context_does_not_globally_compromise_agent():
     """Taint belongs to context/data lineage, not global permanent agent corruption."""
-    guard = AgentGuard()
+    guard = ActShield()
     warehouse = EnterpriseFinancialWarehouse()
     tools = EnterpriseToolSuite(guard=guard, warehouse=warehouse, mcp_server=SimulatedMCPServer())
     planner, researcher, analyst, data_agent = setup_agents(guard)
@@ -335,7 +335,7 @@ def test_untrusted_context_does_not_globally_compromise_agent():
 # Test 20: Recursive Delegation Still Works Seamlessly
 # -----------------------------------------------------------------------------
 def test_recursive_delegation_deep_chain():
-    guard = AgentGuard()
+    guard = ActShield()
     planner, researcher, analyst, data_agent = setup_agents(guard)
 
     with guard.task(intent="Deep recursive delegation"):

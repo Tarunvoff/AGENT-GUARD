@@ -4,9 +4,9 @@ Unit tests for Provider Registry, Providers, and Platform CLI extensions.
 import unittest
 from unittest.mock import MagicMock, patch
 
-from agentguard.providers.base import AnalysisResult, HealthReport, SecurityAIProvider
-from agentguard.providers.null_provider import NullProvider
-from agentguard.providers.registry import ProviderRegistry, get_default_registry, reset_default_registry
+from actshield.providers.base import AnalysisResult, HealthReport, SecurityAIProvider
+from actshield.providers.null_provider import NullProvider
+from actshield.providers.registry import ProviderRegistry, get_default_registry, reset_default_registry
 
 
 class MockProvider(SecurityAIProvider):

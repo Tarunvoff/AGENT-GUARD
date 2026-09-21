@@ -26,18 +26,18 @@ from typing import List
 
 import pytest
 
-from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.config import AgentGuardConfig
-from agentguard.context.context import Context
-from agentguard.context.provenance import ContextSource, Provenance
-from agentguard.context.taint import TaintState
-from agentguard.delegation.delegation import Delegation
-from agentguard.delegation.authority import AuthorityGrant
-from agentguard.forensics.access_graph import AccessGraph
-from agentguard.forensics.authority_graph import AuthorityGraph
-from agentguard.forensics.delegation_graph import EffectiveAccessCalculator
-from agentguard.forensics.models import (
+from actshield.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
+from actshield.client import ActShield
+from actshield.config import ActShieldConfig
+from actshield.context.context import Context
+from actshield.context.provenance import ContextSource, Provenance
+from actshield.context.taint import TaintState
+from actshield.delegation.delegation import Delegation
+from actshield.delegation.authority import AuthorityGrant
+from actshield.forensics.access_graph import AccessGraph
+from actshield.forensics.authority_graph import AuthorityGraph
+from actshield.forensics.delegation_graph import EffectiveAccessCalculator
+from actshield.forensics.models import (
     AccessAttempt,
     AccessDecision,
     ActualAccess,
@@ -49,10 +49,10 @@ from agentguard.forensics.models import (
     IncidentSeverity,
     IncidentType,
 )
-from agentguard.forensics.service import ForensicService
-from agentguard.forensics.snapshots import capture_snapshot, compare_snapshots
-from agentguard.tools.tool import Resource, SensitivityLevel, ToolDefinition
-from agentguard.tracing.correlation import generate_id
+from actshield.forensics.service import ForensicService
+from actshield.forensics.snapshots import capture_snapshot, compare_snapshots
+from actshield.tools.tool import Resource, SensitivityLevel, ToolDefinition
+from actshield.tracing.correlation import generate_id
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ from agentguard.tracing.correlation import generate_id
 
 def _register_agent(guard, agent_id: str, name: str, capabilities: list, trust_level=AgentTrustLevel.MEDIUM):
     """Register an agent with a fixed agent_id directly into guard's registry."""
-    from agentguard.agents.agent import Agent
+    from actshield.agents.agent import Agent
     identity = AgentIdentity(
         agent_id=agent_id,
         name=name,
@@ -75,7 +75,7 @@ def _register_agent(guard, agent_id: str, name: str, capabilities: list, trust_l
 
 def _make_guard_with_agents():
     """Build a realistic multi-agent guard for forensic testing."""
-    guard = AgentGuard(config=AgentGuardConfig(
+    guard = ActShield(config=ActShieldConfig(
         enforce_monotonic_delegation=True,
         block_tainted_sink_access=True,
     ))
@@ -431,9 +431,9 @@ class TestForensicsAttackReport:
     """17–18: Attack forensic report and bypass forensic report."""
 
     def _make_attack_result(self, bypassed: bool = False):
-        from agentguard.offensive.results import OffensiveAttackResult, ExecutionEvidence, AttackStatus
-        from agentguard.offensive.attack import AttackType
-        from agentguard.offensive.evidence import SecurityAnalysisEvidence
+        from actshield.offensive.results import OffensiveAttackResult, ExecutionEvidence, AttackStatus
+        from actshield.offensive.attack import AttackType
+        from actshield.offensive.evidence import SecurityAnalysisEvidence
 
         ev = SecurityAnalysisEvidence(
             attack_id="atk_test_001",
@@ -516,7 +516,7 @@ class TestProductApi:
 
     @pytest.fixture
     def api(self, forensic_svc):
-        from agentguard.api.service import ApiService
+        from actshield.api.service import ApiService
         svc, guard, planner, research, data, unauth = forensic_svc
         # Record some data
         svc.record_access_attempt(
@@ -560,7 +560,7 @@ class TestProductApi:
         """22. /api/v1/agents/{agent_id}/access returns clean JSON profile."""
         resp = api.get_agent_access("agt_data")
         assert not isinstance(resp, dict) or "error" not in resp
-        from agentguard.api.models import AgentAccessResponse
+        from actshield.api.models import AgentAccessResponse
         assert isinstance(resp, AgentAccessResponse)
         assert resp.agent_id == "agt_data"
         assert "financial_extract" in resp.declared
@@ -574,14 +574,14 @@ class TestProductApi:
     def test_24_resource_access(self, api):
         """24. /api/v1/resources/{resource_name} returns resource profile."""
         resp = api.get_resource("EnterpriseFinancialWarehouse")
-        from agentguard.api.models import ResourceAccessResponse
+        from actshield.api.models import ResourceAccessResponse
         assert isinstance(resp, ResourceAccessResponse)
         assert resp.sensitivity == "HIGH"
 
     def test_25_access_matrix(self, api):
         """25. /api/v1/access/matrix returns full matrix."""
         resp = api.get_access_matrix()
-        from agentguard.api.models import AccessMatrixResponse
+        from actshield.api.models import AccessMatrixResponse
         assert isinstance(resp, AccessMatrixResponse)
         assert "agt_planner" in resp.agents
         assert "CustomerPIIVault" in resp.resources
@@ -589,15 +589,15 @@ class TestProductApi:
     def test_26_traces_not_found(self, api):
         """26. /api/v1/traces/{trace_id} returns error for unknown trace."""
         resp = api.get_trace("nonexistent_trace_id")
-        from agentguard.api.models import ErrorResponse
+        from actshield.api.models import ErrorResponse
         assert isinstance(resp, ErrorResponse)
         assert resp.error["code"] == "TRACE_NOT_FOUND"
 
     def test_27_attacks_list(self, forensic_svc, api):
         """27. /api/v1/attacks lists ingested attacks."""
         svc, guard, *_ = forensic_svc
-        from agentguard.offensive.results import OffensiveAttackResult, ExecutionEvidence, AttackStatus
-        from agentguard.offensive.attack import AttackType
+        from actshield.offensive.results import OffensiveAttackResult, ExecutionEvidence, AttackStatus
+        from actshield.offensive.attack import AttackType
         result = OffensiveAttackResult(
             attack_id="atk_api_test",
             attack_type=AttackType.DIRECT_PROMPT_INJECTION,
@@ -613,8 +613,8 @@ class TestProductApi:
     def test_28_attack_lineage(self, forensic_svc, api):
         """28. /api/v1/attacks/{attack_id}/lineage returns lineage."""
         svc, guard, *_ = forensic_svc
-        from agentguard.offensive.results import OffensiveAttackResult, AttackStatus
-        from agentguard.offensive.attack import AttackType
+        from actshield.offensive.results import OffensiveAttackResult, AttackStatus
+        from actshield.offensive.attack import AttackType
         result = OffensiveAttackResult(
             attack_id="atk_lineage_test",
             attack_type=AttackType.DIRECT_PROMPT_INJECTION,
@@ -631,9 +631,9 @@ class TestProductApi:
     def test_29_attack_forensics(self, forensic_svc, api):
         """29. /api/v1/attacks/{attack_id}/forensics returns full forensic report."""
         svc, guard, *_ = forensic_svc
-        from agentguard.offensive.results import OffensiveAttackResult, ExecutionEvidence, AttackStatus
-        from agentguard.offensive.attack import AttackType
-        from agentguard.offensive.evidence import SecurityAnalysisEvidence
+        from actshield.offensive.results import OffensiveAttackResult, ExecutionEvidence, AttackStatus
+        from actshield.offensive.attack import AttackType
+        from actshield.offensive.evidence import SecurityAnalysisEvidence
         ev = SecurityAnalysisEvidence(
             attack_id="atk_forensics_test",
             attack_type=AttackType.TOOL_POISONING,
@@ -653,15 +653,15 @@ class TestProductApi:
         )
         svc.ingest_attack_result(result)
         resp = api.get_attack_forensics("atk_forensics_test")
-        from agentguard.api.models import AttackForensicsResponse
+        from actshield.api.models import AttackForensicsResponse
         assert isinstance(resp, AttackForensicsResponse)
         assert resp.attack_id == "atk_forensics_test"
 
     def test_30_campaigns_list(self, forensic_svc, api):
         """30. /api/v1/campaigns aggregates by campaign_id."""
         svc, guard, *_ = forensic_svc
-        from agentguard.offensive.results import OffensiveAttackResult, AttackStatus
-        from agentguard.offensive.attack import AttackType
+        from actshield.offensive.results import OffensiveAttackResult, AttackStatus
+        from actshield.offensive.attack import AttackType
         for i in range(3):
             r = OffensiveAttackResult(
                 attack_id=f"atk_camp_{i}",
@@ -683,8 +683,8 @@ class TestProductApi:
     def test_31_regressions_list(self, forensic_svc, api):
         """31. /api/v1/regressions = attacks where bypassed==True."""
         svc, guard, *_ = forensic_svc
-        from agentguard.offensive.results import OffensiveAttackResult, AttackStatus
-        from agentguard.offensive.attack import AttackType
+        from actshield.offensive.results import OffensiveAttackResult, AttackStatus
+        from actshield.offensive.attack import AttackType
         r = OffensiveAttackResult(
             attack_id="atk_regression",
             attack_type=AttackType.DIRECT_PROMPT_INJECTION,
@@ -713,7 +713,7 @@ class TestProductApi:
 
     def test_33_policy_evaluate(self, api):
         """33. POST /api/v1/policies/evaluate — read-only policy simulation."""
-        from agentguard.api.models import PolicyEvaluateRequest, PolicyEvaluateResponse
+        from actshield.api.models import PolicyEvaluateRequest, PolicyEvaluateResponse
         req = PolicyEvaluateRequest(
             tool_name="customer_db_read",
             agent_id="agt_unauth",
@@ -727,7 +727,7 @@ class TestProductApi:
 
     def test_34_invalid_agent_id_error(self, api):
         """34. Invalid agent ID returns consistent error format."""
-        from agentguard.api.models import ErrorResponse
+        from actshield.api.models import ErrorResponse
         resp = api.get_agent_access("nonexistent_agent_xyz")
         assert isinstance(resp, ErrorResponse)
         assert resp.error["code"] == "AGENT_NOT_FOUND"
@@ -735,7 +735,7 @@ class TestProductApi:
 
     def test_35_consistent_error_format(self, api):
         """35. Error responses always have code + message + request_id."""
-        from agentguard.api.models import ErrorResponse
+        from actshield.api.models import ErrorResponse
         resp = api.get_resource("nonexistent_resource_xyz")
         assert isinstance(resp, ErrorResponse)
         assert "code" in resp.error
@@ -769,8 +769,8 @@ class TestForensicSecurity:
 
     def test_37_api_cannot_bypass_policy_evaluator(self, forensic_svc):
         """37. Policy evaluate is read-only simulation — doesn't bypass enforcement."""
-        from agentguard.api.service import ApiService
-        from agentguard.api.models import PolicyEvaluateRequest
+        from actshield.api.service import ApiService
+        from actshield.api.models import PolicyEvaluateRequest
         svc, guard, *_ = forensic_svc
         api = ApiService(svc)
 
@@ -788,7 +788,7 @@ class TestForensicSecurity:
 
     def test_38_secrets_sanitized(self):
         """38. Serializer redacts sensitive keys."""
-        from agentguard.forensics.serializers import sanitize_for_export
+        from actshield.forensics.serializers import sanitize_for_export
         data = {
             "agent_id": "agt_test",
             "api_key": "sk-supersecret",
@@ -853,7 +853,7 @@ class TestEndToEnd:
           → TAINTED CONTEXT → AnalysisAgent → DataAgent
           → customer_db_read → PolicyEvaluator → BLOCK
         """
-        guard = AgentGuard(config=AgentGuardConfig(
+        guard = ActShield(config=ActShieldConfig(
             enforce_monotonic_delegation=True,
             block_tainted_sink_access=True,
         ))
@@ -892,8 +892,8 @@ class TestEndToEnd:
         guard.context_registry[tainted_ctx.context_id] = tainted_ctx
 
         # Policy evaluation
-        from agentguard.tools.tool import ToolRequest
-        from agentguard.tracing.correlation import CorrelationContext
+        from actshield.tools.tool import ToolRequest
+        from actshield.tracing.correlation import CorrelationContext
         req = ToolRequest(
             tool_id="tool_pii_e2e",
             tool_name="customer_db_read",
@@ -930,7 +930,7 @@ class TestEndToEnd:
         )
 
         # Forensic verification
-        from agentguard.decisions.decision import DecisionAction
+        from actshield.decisions.decision import DecisionAction
         assert decision.action == DecisionAction.BLOCK, f"Expected BLOCK, got {decision.action}"
 
         # Confirm: no sensitive access
@@ -953,7 +953,7 @@ class TestEndToEnd:
         The system must NOT simply block everything.
         Authorized executions must be confirmed.
         """
-        guard = AgentGuard(config=AgentGuardConfig(
+        guard = ActShield(config=ActShieldConfig(
             enforce_monotonic_delegation=True,
             block_tainted_sink_access=True,
         ))
@@ -977,8 +977,8 @@ class TestEndToEnd:
         guard.tool_registry["tool_fin_e2e"] = fin_tool
         svc = ForensicService(guard)
 
-        from agentguard.tools.tool import ToolRequest
-        from agentguard.tracing.correlation import CorrelationContext
+        from actshield.tools.tool import ToolRequest
+        from actshield.tracing.correlation import CorrelationContext
         req = ToolRequest(
             tool_id="tool_fin_e2e",
             tool_name="query_financial_metrics",
@@ -999,7 +999,7 @@ class TestEndToEnd:
         )
 
         # Authorized agent should be ALLOWED
-        from agentguard.decisions.decision import DecisionAction
+        from actshield.decisions.decision import DecisionAction
         assert decision.action in (DecisionAction.ALLOW, DecisionAction.MONITOR), \
             f"Expected ALLOW/MONITOR for authorized agent, got {decision.action}"
 

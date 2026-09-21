@@ -1,4 +1,4 @@
-"""Comprehensive Unit Test Suite for AgentGuard Phase 5 — Adaptive Offensive Security Validation."""
+"""Comprehensive Unit Test Suite for ActShield Phase 5 — Adaptive Offensive Security Validation."""
 
 import json
 import os
@@ -6,19 +6,19 @@ import pathlib
 import unittest
 from datetime import datetime
 
-from agentguard.client import AgentGuard
-from agentguard.decisions.decision import DecisionAction, SecurityDecision
-from agentguard.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
-from agentguard.offensive.campaign import AttackCampaign, CampaignSummary
-from agentguard.offensive.corpus import AttackCorpus
-from agentguard.offensive.engine import OffensiveEngine
-from agentguard.offensive.evidence import SecurityAnalysisEvidence
-from agentguard.offensive.mutation import MutationStrategy
-from agentguard.offensive.results import AttackStatus
-from agentguard.offensive.safety import SafetyValidator
-from agentguard.offensive.target import AttackTarget, TargetEnvironment, TargetRegistry
-from agentguard.offensive.vulnerable_target import VulnerableDemoTarget
-from agentguard.offensive.adaptive import (
+from actshield.client import ActShield
+from actshield.decisions.decision import DecisionAction, SecurityDecision
+from actshield.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
+from actshield.offensive.campaign import AttackCampaign, CampaignSummary
+from actshield.offensive.corpus import AttackCorpus
+from actshield.offensive.engine import OffensiveEngine
+from actshield.offensive.evidence import SecurityAnalysisEvidence
+from actshield.offensive.mutation import MutationStrategy
+from actshield.offensive.results import AttackStatus
+from actshield.offensive.safety import SafetyValidator
+from actshield.offensive.target import AttackTarget, TargetEnvironment, TargetRegistry
+from actshield.offensive.vulnerable_target import VulnerableDemoTarget
+from actshield.offensive.adaptive import (
     AdaptiveAttackSelector,
     AdaptiveEngine,
     BoundarySearchEngine,
@@ -35,7 +35,7 @@ class TestPhase5Adaptive(unittest.TestCase):
     """Test suite validating Phase 5 Adaptive Offensive Engine and Full Security Pipeline."""
 
     def setUp(self):
-        self.guard = AgentGuard()
+        self.guard = ActShield()
         self.engine = OffensiveEngine(guard=self.guard)
         self.target = AttackTarget(
             target_id="test-synth-env",
@@ -141,7 +141,7 @@ class TestPhase5Adaptive(unittest.TestCase):
             def analyze(self, ctx):
                 raise RuntimeError("AI Provider Network Disconnected")
 
-        guard_failing = AgentGuard(ai_secura=FailingAISecura())
+        guard_failing = ActShield(ai_secura=FailingAISecura())
         engine_failing = OffensiveEngine(guard=guard_failing)
         attack = AttackCase(
             attack_id="atk_fail_provider",
@@ -160,10 +160,10 @@ class TestPhase5Adaptive(unittest.TestCase):
         # AI Secura might advise LOW risk, but deterministic policy MUST still block tainted sensitive sink
         class BenignAdvisingAISecura:
             def analyze(self, ctx):
-                from agentguard.integrations.ai_secura import SecurityAnalysis
+                from actshield.integrations.ai_secura import SecurityAnalysis
                 return SecurityAnalysis(analysis_id="ai_benign", summary="Looks benign", risk_score=0.0)
 
-        guard = AgentGuard(ai_secura=BenignAdvisingAISecura())
+        guard = ActShield(ai_secura=BenignAdvisingAISecura())
         engine = OffensiveEngine(guard=guard)
         attack = AttackCase(
             attack_id="atk_policy_authority",

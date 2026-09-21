@@ -3,19 +3,19 @@
 import json
 import pytest
 
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.gateway.http import HTTPGateway, HTTPInterceptedResponse
-from agentguard.gateway.mcp import MCPGateway, MCPMessage
-from agentguard.tools.tool import SensitivityLevel
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.gateway.http import HTTPGateway, HTTPInterceptedResponse
+from actshield.gateway.mcp import MCPGateway, MCPMessage
+from actshield.tools.tool import SensitivityLevel
 
 
 # -----------------------------------------------------------------------------
 # 1. MCP Gateway Tool Registration & List
 # -----------------------------------------------------------------------------
 def test_mcp_gateway_tools_list():
-    guard = AgentGuard()
+    guard = ActShield()
     gw = guard.mcp_gateway(server_name="fiscal-mcp", server_uri="mcp://fiscal.internal/v1")
 
     def mock_fetch_10k(args):
@@ -40,7 +40,7 @@ def test_mcp_gateway_tools_list():
 # 2. MCP Gateway Authorized Call with Automatic Provenance Tagging
 # -----------------------------------------------------------------------------
 def test_mcp_gateway_authorized_call():
-    guard = AgentGuard()
+    guard = ActShield()
     gw = guard.mcp_gateway(server_name="fiscal-mcp", server_uri="mcp://fiscal.internal/v1")
 
     def mock_fetch_10k(args):
@@ -71,18 +71,18 @@ def test_mcp_gateway_authorized_call():
 
             assert res_msg.error is None
             assert res_msg.result is not None
-            assert "_agentguard" in res_msg.result
-            ctx_id = res_msg.result["_agentguard"]["context_id"]
+            assert "_actshield" in res_msg.result
+            ctx_id = res_msg.result["_actshield"]["context_id"]
             assert ctx_id.startswith("ctx_")
-            assert res_msg.result["_agentguard"]["taint_state"] == "CLEAN"
-            assert res_msg.result["_agentguard"]["trust_level"] == "untrusted"
+            assert res_msg.result["_actshield"]["taint_state"] == "CLEAN"
+            assert res_msg.result["_actshield"]["trust_level"] == "untrusted"
 
 
 # -----------------------------------------------------------------------------
 # 3. MCP Gateway Injected Prompt Injection Taint Detection
 # -----------------------------------------------------------------------------
 def test_mcp_gateway_injected_prompt_detection():
-    guard = AgentGuard()
+    guard = ActShield()
     gw = guard.mcp_gateway(server_name="external-mcp", server_uri="mcp://external.search/v1")
 
     def mock_adversarial_mcp(args):
@@ -108,14 +108,14 @@ def test_mcp_gateway_injected_prompt_detection():
             })
 
             assert res_msg.error is None
-            assert res_msg.result["_agentguard"]["taint_state"] == "TAINTED"
+            assert res_msg.result["_actshield"]["taint_state"] == "TAINTED"
 
 
 # -----------------------------------------------------------------------------
 # 4. MCP Gateway Unauthorized Call Blocked
 # -----------------------------------------------------------------------------
 def test_mcp_gateway_unauthorized_call_blocked():
-    guard = AgentGuard()
+    guard = ActShield()
     gw = guard.mcp_gateway(server_name="admin-mcp", server_uri="mcp://admin.internal/v1")
 
     def mock_admin_tool(args):
@@ -150,7 +150,7 @@ def test_mcp_gateway_unauthorized_call_blocked():
 # 5. HTTP Gateway Live Interception & Provenance
 # -----------------------------------------------------------------------------
 def test_http_gateway_authorized_request():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="APIAgent", capabilities=["external_api"])
     http_gw = guard.http_gateway()
 
@@ -168,7 +168,7 @@ def test_http_gateway_authorized_request():
 # 6. HTTP Gateway Blocks Command Injection Pattern (APIRIS Intelligence)
 # -----------------------------------------------------------------------------
 def test_http_gateway_blocks_command_injection():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="APIAgent", capabilities=["external_api"])
     http_gw = guard.http_gateway()
 
@@ -187,7 +187,7 @@ def test_http_gateway_blocks_command_injection():
 # 7. MCP Gateway Ping Protocol
 # -----------------------------------------------------------------------------
 def test_mcp_gateway_ping():
-    guard = AgentGuard()
+    guard = ActShield()
     gw = guard.mcp_gateway()
     msg = gw.handle_message({"jsonrpc": "2.0", "id": "ping_1", "method": "ping"})
     assert msg.id == "ping_1"
@@ -198,7 +198,7 @@ def test_mcp_gateway_ping():
 # 8. MCP Gateway Resources Read
 # -----------------------------------------------------------------------------
 def test_mcp_gateway_resources_read():
-    guard = AgentGuard()
+    guard = ActShield()
     gw = guard.mcp_gateway()
     msg = gw.handle_message({
         "jsonrpc": "2.0",
@@ -207,15 +207,15 @@ def test_mcp_gateway_resources_read():
         "params": {"uri": "mcp://filings.internal/2026/10k.txt"},
     })
     assert msg.id == "res_1"
-    assert "_agentguard" in msg.result
-    assert msg.result["_agentguard"]["context_id"].startswith("ctx_")
+    assert "_actshield" in msg.result
+    assert msg.result["_actshield"]["context_id"].startswith("ctx_")
 
 
 # -----------------------------------------------------------------------------
 # 9. HTTP Gateway Verbs (PUT, DELETE, JSON Parsing)
 # -----------------------------------------------------------------------------
 def test_http_gateway_verbs_and_parsing():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="APIAgent", capabilities=["external_api"])
     http_gw = guard.http_gateway()
 

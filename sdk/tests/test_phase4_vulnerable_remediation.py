@@ -1,10 +1,10 @@
 """Phase 4 Tests — Deliberate vulnerable target bypass and remediation replay."""
 
 import unittest
-from agentguard.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
-from agentguard.offensive.corpus import attack_corpus
-from agentguard.offensive.results import AttackStatus
-from agentguard.offensive.vulnerable_target import VulnerableDemoTarget
+from actshield.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
+from actshield.offensive.corpus import attack_corpus
+from actshield.offensive.results import AttackStatus
+from actshield.offensive.vulnerable_target import VulnerableDemoTarget
 
 
 class TestPhase4VulnerableRemediation(unittest.TestCase):

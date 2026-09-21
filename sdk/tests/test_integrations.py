@@ -1,19 +1,19 @@
 """Tests for AI Secura and APIRIS adapter protocols and dependency inversion."""
 
-from agentguard.client import AgentGuard
-from agentguard.integrations.ai_secura import (
+from actshield.client import ActShield
+from actshield.integrations.ai_secura import (
     LocalAISecuraAdapter,
     SecurityAnalysis,
     SecurityContext,
     SecurityReasoner,
 )
-from agentguard.integrations.apiris import (
+from actshield.integrations.apiris import (
     APIAnalysis,
     APIIntelligence,
     LocalAPIRISAdapter,
 )
-from agentguard.risk.models import RiskLevel, RiskSignal
-from agentguard.tools.tool import SensitivityLevel, ToolRequest
+from actshield.risk.models import RiskLevel, RiskSignal
+from actshield.tools.tool import SensitivityLevel, ToolRequest
 
 
 def test_ai_secura_reasoner_protocol_and_custom_adapter():
@@ -28,7 +28,7 @@ def test_ai_secura_reasoner_protocol_and_custom_adapter():
             )
 
     custom_secura = CustomEnterpriseAISecura()
-    guard = AgentGuard(ai_secura=custom_secura)
+    guard = ActShield(ai_secura=custom_secura)
 
     sec_ctx = SecurityContext(
         trace_id="trc_test_01",
@@ -53,7 +53,7 @@ def test_apiris_intelligence_protocol_and_custom_adapter():
             )
 
     custom_apiris = CustomAPIRISAdapter()
-    guard = AgentGuard(apiris=custom_apiris)
+    guard = ActShield(apiris=custom_apiris)
 
     tool_req = ToolRequest(
         tool_id="tool_123",

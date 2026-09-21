@@ -1,14 +1,14 @@
-"""Tests for AgentGuard SDK-First Public Facades, Agent Discovery, Topology & CLI."""
+"""Tests for ActShield SDK-First Public Facades, Agent Discovery, Topology & CLI."""
 import pytest
-from agentguard import AgentGuard, AgentStatus, AgentTrustLevel
-from agentguard.doctor import run_doctor
-from agentguard.cli.graph import render_agent_topology
-from agentguard.cli.shell import AgentGuardShell
-from agentguard.providers.registry import get_provider_registry
+from actshield import ActShield, AgentStatus, AgentTrustLevel
+from actshield.doctor import run_doctor
+from actshield.cli.graph import render_agent_topology
+from actshield.cli.shell import ActShieldShell
+from actshield.providers.registry import get_provider_registry
 
 
 def test_sdk_facade_lifecycle():
-    guard = AgentGuard(mode="strict")
+    guard = ActShield(mode="strict")
     assert not guard.is_running
     guard.start()
     assert guard.is_running
@@ -16,7 +16,7 @@ def test_sdk_facade_lifecycle():
 
 
 def test_sdk_agent_registration_and_status():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.register_agent(
         name="test-worker",
         capabilities=["data_read", "search"],
@@ -33,7 +33,7 @@ def test_sdk_agent_registration_and_status():
 
 
 def test_sdk_agent_decorator_and_context():
-    guard = AgentGuard()
+    guard = ActShield()
 
     @guard.agent(name="analyst-agent", capabilities=["metrics"])
     def analyze_metrics(data):
@@ -49,7 +49,7 @@ def test_sdk_agent_decorator_and_context():
 
 
 def test_sdk_observe_analyze_enforce_explain():
-    guard = AgentGuard()
+    guard = ActShield()
     evt = guard.observe("custom_test_event", payload={"key": "value"})
     assert evt.event_id.startswith("evt_")
 

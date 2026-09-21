@@ -1,16 +1,16 @@
 """Tests for deterministic policy enforcement and decision generation."""
 
 import pytest
-from agentguard.agents.identity import AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction
-from agentguard.tools.tool import SensitivityLevel
+from actshield.agents.identity import AgentTrustLevel
+from actshield.client import ActShield
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction
+from actshield.tools.tool import SensitivityLevel
 
 
 def test_policy_blocks_missing_capability():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="reader", capabilities=["public_search"])
 
     @guard.protected_tool(
@@ -34,7 +34,7 @@ def test_policy_blocks_missing_capability():
 
 def test_policy_blocks_delegation_authority_exceeded():
     """Agent has general capability, but the active delegation specifically did not grant it."""
-    guard = AgentGuard()
+    guard = ActShield()
     planner = guard.agent(name="planner", capabilities=["search", "delete_records"])
     worker = guard.agent(name="worker", capabilities=["search", "delete_records"])
 
@@ -58,7 +58,7 @@ def test_policy_blocks_delegation_authority_exceeded():
 
 
 def test_policy_blocks_tainted_context_into_sensitive_sink():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="processor", capabilities=["execute_transfer"])
 
     @guard.protected_tool(
@@ -87,7 +87,7 @@ def test_policy_blocks_tainted_context_into_sensitive_sink():
 
 
 def test_policy_blocks_untrusted_agent_sensitive_access():
-    guard = AgentGuard()
+    guard = ActShield()
     untrusted_agent = guard.agent(
         name="external_guest_agent",
         capabilities=["access_internal_api"],

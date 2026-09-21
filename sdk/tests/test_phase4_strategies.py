@@ -1,9 +1,9 @@
 """Phase 4 Tests — Offensive strategies, multi-agent propagation, and cross-protocol equivalence."""
 
 import unittest
-from agentguard.offensive.attack import AttackCase, AttackType, ExpectedBehavior
-from agentguard.offensive.engine import OffensiveEngine
-from agentguard.offensive.strategies import (
+from actshield.offensive.attack import AttackCase, AttackType, ExpectedBehavior
+from actshield.offensive.engine import OffensiveEngine
+from actshield.offensive.strategies import (
     PromptInjectionStrategy,
     AuthorityEscalationStrategy,
     ToolPoisoningStrategy,
@@ -12,14 +12,14 @@ from agentguard.offensive.strategies import (
     DataExfiltrationStrategy,
     DelegationEscalationStrategy,
 )
-from agentguard.offensive.target import target_registry
+from actshield.offensive.target import target_registry
 
 
 class TestPhase4Strategies(unittest.TestCase):
     """Test all strategy generators and multi-agent execution."""
 
     def setUp(self):
-        self.target = target_registry.get("agentguard-demo")
+        self.target = target_registry.get("actshield-demo")
         self.engine = OffensiveEngine()
 
     def test_all_strategies_generate_valid_cases(self):

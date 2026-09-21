@@ -1,12 +1,12 @@
 """Tests for tool registration, protected execution, and interceptor hooks."""
 
 import pytest
-from agentguard.client import AgentGuard
-from agentguard.tools.tool import Resource, SensitivityLevel
+from actshield.client import ActShield
+from actshield.tools.tool import Resource, SensitivityLevel
 
 
 def test_tool_registration():
-    guard = AgentGuard()
+    guard = ActShield()
     
     resource = Resource(name="customers_db", resource_type="database", sensitivity=SensitivityLevel.HIGH)
     
@@ -28,7 +28,7 @@ def test_tool_registration():
 
 
 def test_sync_protected_tool_execution_allowed():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="db_agent", capabilities=["db.read"])
 
     @guard.protected_tool(
@@ -53,7 +53,7 @@ def test_sync_protected_tool_execution_allowed():
 
 @pytest.mark.asyncio
 async def test_async_protected_tool_execution_allowed():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="async_agent", capabilities=["api.call"])
 
     @guard.protected_tool(
@@ -75,7 +75,7 @@ async def test_async_protected_tool_execution_allowed():
 
 
 def test_secret_redaction_in_tool_events():
-    guard = AgentGuard()
+    guard = ActShield()
     agent = guard.agent(name="api_agent", capabilities=["api.call"])
 
     @guard.protected_tool(

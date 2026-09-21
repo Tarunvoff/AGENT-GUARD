@@ -2,21 +2,21 @@
 
 import pytest
 
-from agentguard.approval.approval import ApprovalManager, ApprovalStatus
-from agentguard.client import AgentGuard
-from agentguard.decisions.decision import DecisionAction, SecurityDecision
-from agentguard.integrations.ai_secura import AISecuraClient, SecurityContext
-from agentguard.integrations.apiris import APIRISClient
-from agentguard.risk.models import RiskLevel
-from agentguard.tools.tool import SensitivityLevel, ToolDefinition, ToolRequest
-from agentguard.tracing.events import EventType
+from actshield.approval.approval import ApprovalManager, ApprovalStatus
+from actshield.client import ActShield
+from actshield.decisions.decision import DecisionAction, SecurityDecision
+from actshield.integrations.ai_secura import AISecuraClient, SecurityContext
+from actshield.integrations.apiris import APIRISClient
+from actshield.risk.models import RiskLevel
+from actshield.tools.tool import SensitivityLevel, ToolDefinition, ToolRequest
+from actshield.tracing.events import EventType
 
 
 # -----------------------------------------------------------------------------
 # 1. ApprovalManager: Request Creation & Pending Queue
 # -----------------------------------------------------------------------------
 def test_approval_manager_request_lifecycle():
-    guard = AgentGuard()
+    guard = ActShield()
     tool_def = ToolDefinition(tool_id="tool_transfer", name="wire_transfer", sensitivity=SensitivityLevel.CRITICAL)
     request = ToolRequest(request_id="req_100", tool_id="tool_transfer", tool_name="wire_transfer", arguments={"amount": 50000})
     decision = SecurityDecision(
@@ -55,7 +55,7 @@ def test_approval_manager_request_lifecycle():
 # 2. ApprovalManager: Grant Approval
 # -----------------------------------------------------------------------------
 def test_approval_manager_grant_approval():
-    guard = AgentGuard()
+    guard = ActShield()
     tool_def = ToolDefinition(tool_id="tool_transfer", name="wire_transfer")
     request = ToolRequest(request_id="req_101", tool_id="tool_transfer", tool_name="wire_transfer")
     decision = SecurityDecision(
@@ -85,7 +85,7 @@ def test_approval_manager_grant_approval():
 # 3. ApprovalManager: Reject Approval
 # -----------------------------------------------------------------------------
 def test_approval_manager_reject_approval():
-    guard = AgentGuard()
+    guard = ActShield()
     tool_def = ToolDefinition(tool_id="tool_transfer", name="wire_transfer")
     request = ToolRequest(request_id="req_102", tool_id="tool_transfer", tool_name="wire_transfer")
     decision = SecurityDecision(

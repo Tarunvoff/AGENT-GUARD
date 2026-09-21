@@ -4,7 +4,7 @@ import argparse
 import unittest
 from unittest.mock import patch
 
-from agentguard.__main__ import cli_attack_list, cli_attack_run, cli_attack_replay, cli_attack_report
+from actshield.__main__ import cli_attack_list, cli_attack_run, cli_attack_replay, cli_attack_report
 
 
 class TestPhase4CLI(unittest.TestCase):

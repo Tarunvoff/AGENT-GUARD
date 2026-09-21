@@ -3,14 +3,14 @@
 import tempfile
 import pathlib
 import unittest
-from agentguard.client import AgentGuard
-from agentguard.decisions.decision import DecisionAction, SecurityDecision
-from agentguard.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
-from agentguard.offensive.campaign import AttackCampaign
-from agentguard.offensive.engine import OffensiveEngine
-from agentguard.offensive.evaluator import AttackEvaluator
-from agentguard.offensive.results import AttackStatus
-from agentguard.offensive.target import target_registry
+from actshield.client import ActShield
+from actshield.decisions.decision import DecisionAction, SecurityDecision
+from actshield.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
+from actshield.offensive.campaign import AttackCampaign
+from actshield.offensive.engine import OffensiveEngine
+from actshield.offensive.evaluator import AttackEvaluator
+from actshield.offensive.results import AttackStatus
+from actshield.offensive.target import target_registry
 
 
 class TestPhase4EngineAndEvaluator(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestPhase4EngineAndEvaluator(unittest.TestCase):
 
     def setUp(self):
         self.engine = OffensiveEngine()
-        self.target = target_registry.get("agentguard-demo")
+        self.target = target_registry.get("actshield-demo")
 
     def test_execute_blocked_attack(self):
         attack = AttackCase(

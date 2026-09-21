@@ -11,9 +11,9 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 
-from agentguard.llm_config import LLMConfig
-from agentguard.integrations.ai_secura import SecurityContext
-from agentguard.integrations.ai_secura_analysis import (
+from actshield.llm_config import LLMConfig
+from actshield.integrations.ai_secura import SecurityContext
+from actshield.integrations.ai_secura_analysis import (
     AISecuraAnalysis,
     ThreatSeverity,
     IntentAlignment,
@@ -23,16 +23,16 @@ from agentguard.integrations.ai_secura_analysis import (
     AuthorityAnalysis,
     TaintAnalysis,
 )
-from agentguard.integrations.security_packet import build_security_packet
-from agentguard.integrations.few_shot import select_few_shot_examples, format_examples_for_prompt
-from agentguard.integrations.ollama_adapter import (
+from actshield.integrations.security_packet import build_security_packet
+from actshield.integrations.few_shot import select_few_shot_examples, format_examples_for_prompt
+from actshield.integrations.ollama_adapter import (
     OllamaAISecuraAdapter,
     _parse_analysis,
     _strip_markdown_fences,
     _make_unavailable_analysis,
 )
-from agentguard.tracing.events import EventType
-from agentguard.risk.models import RiskLevel
+from actshield.tracing.events import EventType
+from actshield.risk.models import RiskLevel
 
 
 class TestLLMConfig(unittest.TestCase):
@@ -116,7 +116,7 @@ class TestAISecuraAnalysisSchema(unittest.TestCase):
 
 
 class TestSecurityPacketBuilder(unittest.TestCase):
-    """Security packet construction from AgentGuard objects."""
+    """Security packet construction from actshield objects."""
 
     def test_basic_packet(self):
         ctx = SecurityContext(
@@ -136,7 +136,7 @@ class TestSecurityPacketBuilder(unittest.TestCase):
         assert "CLEAN" in pkt["taint_states"]
 
     def test_packet_with_apiris(self):
-        from agentguard.integrations.apiris import APIAnalysis
+        from actshield.integrations.apiris import APIAnalysis
         ctx = SecurityContext(trace_id="tr_test", task_intent="test")
         apiris = APIAnalysis(
             analysis_id="apiris_test",
@@ -223,7 +223,7 @@ class TestPolicyIntegration(unittest.TestCase):
         assert ai.ai_recommendation == AIRecommendation.ALLOW
         # PolicyEvaluator is authoritative — it can override AI
         # This test validates the principle exists in the schema
-        from agentguard.decisions.decision import DecisionAction, SecurityDecision
+        from actshield.decisions.decision import DecisionAction, SecurityDecision
         decision = SecurityDecision(
             action=DecisionAction.BLOCK,
             reason_code="TAINTED_CONTEXT_INTO_SENSITIVE_SINK",
@@ -238,7 +238,7 @@ class TestPolicyIntegration(unittest.TestCase):
             ai_recommendation=AIRecommendation.BLOCK,
             severity=ThreatSeverity.HIGH,
         )
-        from agentguard.decisions.decision import DecisionAction, SecurityDecision
+        from actshield.decisions.decision import DecisionAction, SecurityDecision
         decision = SecurityDecision(
             action=DecisionAction.ALLOW,
             reason_code="ALL_CHECKS_PASSED",
@@ -290,7 +290,7 @@ class TestSecretRedaction(unittest.TestCase):
     """AI analysis payloads go through redaction."""
 
     def test_raw_response_can_be_redacted(self):
-        from agentguard.config import default_redact_function
+        from actshield.config import default_redact_function
         analysis_dict = {
             "analysis": "Found api_key: sk-1234567890abcdefghij in evidence",
             "raw_response": "Bearer eyJhbGciOiJIUzI1NiJ9.test_token_value",
@@ -309,7 +309,7 @@ class TestLegacyMapping(unittest.TestCase):
     """OllamaAISecuraAdapter.analyze_legacy returns SecurityAnalysis."""
 
     def test_map_to_legacy_format(self):
-        from agentguard.integrations.ollama_adapter import _map_to_legacy
+        from actshield.integrations.ollama_adapter import _map_to_legacy
         rich = AISecuraAnalysis(
             threat_type="indirect_prompt_injection",
             attack_technique=AttackTechnique.INDIRECT_PROMPT_INJECTION,

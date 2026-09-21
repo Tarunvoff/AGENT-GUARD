@@ -1,4 +1,4 @@
-﻿"""Live Model Context Protocol (MCP) Security Gateway.
+"""Live Model Context Protocol (MCP) Security Gateway.
 
 Intercepts and governs JSON-RPC messages between AI Agents and MCP servers:
 - Intercepts 'tools/list', 'tools/call', 'resources/read', 'prompts/get'
@@ -259,7 +259,7 @@ class MCPGateway:
             id=msg_id,
             result={
                 "content": [{"type": "text", "text": content_str}],
-                "_ActShield": {
+                "_actshield": {
                     "context_id": ctx.context_id,
                     "taint_state": taint_level.value,
                     "trust_level": self.default_trust_level.value,
@@ -282,8 +282,9 @@ class MCPGateway:
             id=msg_id,
             result={
                 "contents": [{"uri": uri, "text": ctx.data}],
-                "_ActShield": {"context_id": ctx.context_id, "taint_state": ctx.taint_state.value},
+                "_actshield": {"context_id": ctx.context_id, "taint_state": ctx.taint_state.value},
             },
         )
+
 
 

@@ -409,7 +409,15 @@ __all__ = [
     "BoundaryType",
     "Threat",
     "AttackScenario",
+    # Backward Compatibility Aliases
+    "AgentGuard",
+    "AgentGuardConfig",
 ]
+
+# Backward compatibility aliases
+AgentGuard = ActShield
+AgentGuardConfig = ActShieldConfig
+
 
 
 

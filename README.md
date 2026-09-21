@@ -1,927 +1,478 @@
-<div align="center">
+# ActShield
 
-<img src="./assets/logo.png" alt="AgentGuard Logo" width="220" />
+**Security Control Plane for Autonomous AI**
 
-# AgentGuard
+ActShield gives autonomous and multi-agent AI systems identity, authority containment, context provenance, taint tracking, deterministic policy enforcement, threat modeling, forensic investigation, and continuous offensive validation.
 
-### Security Control Plane for Autonomous AI
-
-> **When AI can act, security must follow the action.**
-
-</div>
-
----
-
-## The Problem Is No Longer Just What AI Says
-
-On September 18, 2026, Google confirmed that during cybersecurity testing, Gemini unintentionally accessed real company systems.
-
-The testing environment was intended to contain simulated companies. However, unintended internet access combined with a naming collision caused Gemini to reach real systems. In some cases, credentials were guessed or retrieved from publicly available sources. Google said the model stopped after recognizing that the targets were real.
-
-The important lesson isn't about one model.
-
-It is about **what happens when an AI system moves from generating an answer to taking an action.**
-
-An autonomous agent can:
-
-```mermaid
-flowchart TD
-    A[🧠 Reason] --> B[🎯 Choose Target]
-    B --> C[📄 Ingest Context]
-    C --> D[🤝 Delegate to Agent]
-    D --> E[🔌 Call MCP Server]
-    E --> F[🌐 Call API]
-    F --> G[🔑 Use Credentials]
-    G --> H[📂 Access Resource]
-    H --> I[⚡ Execute Action]
 ```
-
-And once this happens at enterprise scale, the security problem changes.
-
----
-
-# The 1,000-Agent Problem
-
-Imagine an enterprise running hundreds or thousands of autonomous agents.
-
-```mermaid
-flowchart TD
-    subgraph EnterpriseAI ["ENTERPRISE AI LAYER"]
-        Agents["🤖 Agents"] --> SubAgents["Sub-agents"]
-        MCP["🔌 MCP Servers"] --> ExtData["External Data"]
-        APIs["🌐 APIs"] --> Tools["Tools"]
-    end
-    SubAgents --> Systems["🏢 Enterprise Systems"]
-    ExtData --> Systems
-    Tools --> Systems
-    Systems --> SensitiveData[("🔒 Sensitive Data & Assets")]
-```
-
-An agent may no longer operate alone.
-
-It can delegate.
-
-A delegated agent can delegate again.
-
-A tool can return external content.
-
-An MCP server can introduce untrusted context.
-
-That context can influence another agent.
-
-That agent can request a privileged tool.
-
-And the final action may be several hops away from the original user instruction.
-
-Traditional security systems can answer:
-
-> Who is this agent?
-
-> What resource was accessed?
-
-> What event happened?
-
-But autonomous AI introduces a deeper question:
-
-> **Why did this action happen?**
-
-And even more importantly:
-
-> **Who authorized it, what influenced it, what authority was delegated, and did the final action remain within the original intent?**
-
-That is the gap AgentGuard is designed to address.
-
----
-
-# Introducing AgentGuard
-
-## A Cross-Boundary Causal Security Control Plane for Multi-Agent AI
-
-AgentGuard sits between autonomous AI systems and the resources they can influence.
-
-```mermaid
-flowchart TD
-    subgraph EnterpriseAI ["ENTERPRISE AI LAYER"]
-        Agents["🤖 Agents / Sub-Agents"]
-        Integrations["🔌 MCP / APIs / Tools"]
-    end
-    Agents --> Integrations
-    Integrations --> AG["🛡️ AGENTGUARD CONTROL PLANE<br/>• Identity & Authority Containment<br/>• Context Provenance & Taint Lineage<br/>• Deterministic Policy Engine<br/>• Cryptographic Execution Evidence"]
-    AG --> Resources[("🏢 Enterprise Resources & Databases")]
-```
-
-AgentGuard follows an action across:
-
-```mermaid
-flowchart LR
-    ID[Identity] --> Task[Task]
-    Task --> Del[Delegation]
-    Del --> Ctx[Context]
-    Ctx --> Prov[Provenance]
-    Prov --> Auth[Authority]
-    Auth --> Tool[Tool / API]
-    Tool --> Pol[Policy]
-    Pol --> Exec[Execution]
-```
-
-The result is not just an alert.
-
-It is a **causal security record of why the action happened and what actually happened.**
-
----
-
-# The AgentGuard Security Loop
-
-Everything in AgentGuard revolves around four stages:
-
-# OBSERVE → CORRELATE → ANALYZE → ENFORCE
-
-We call this the **4 MANTA flow**.
-
----
-
-## 01 — OBSERVE
-
-First, AgentGuard captures what the autonomous system is doing.
-
-```mermaid
-flowchart LR
-    Agent[Agent] --- Task[Task]
-    Task --- Tool[Tool]
-    Tool --- MCP[MCP]
-    MCP --- API[API]
-    API --- Context[Context]
-    Context --- Resource[Resource]
-    Resource --- Trace[Trace]
-    Trace --- Execution[Execution]
-```
-
-The objective is simple:
-
-> **Don't lose the action.**
-
-Every important operation receives identity and trace context.
-
----
-
-## 02 — CORRELATE
-
-Observation alone is not enough.
-
-AgentGuard connects the events.
-
-```mermaid
-flowchart TD
-    User([👤 User]) --> Planner[Planner Agent]
-    Planner -- "delegation" --> Research[Research Agent]
-    Research --> MCP[External MCP]
-    MCP --> ExtCtx[External Context]
-    ExtCtx --> Analysis[Analysis Agent]
-    Analysis --> DataAgent[Data Agent]
-    DataAgent --> SensitiveTool["Sensitive Tool (DB / S3)"]
-```
-
-AgentGuard tracks:
-
-```mermaid
-flowchart LR
-    ID[Identity] --- Del[Delegation]
-    Del --- Auth[Authority]
-    Auth --- Ctx[Context]
-    Ctx --- Prov[Provenance]
-    Prov --- Taint[Taint State]
-    Taint --- Trace[Causal Trace DAG]
-```
-
-This allows security teams to answer:
-
-> **What caused this action?**
-
----
-
-# 03 — ANALYZE
-
-AgentGuard combines two intelligence layers.
-
-```mermaid
-flowchart TD
-    subgraph SecurityAnalysis ["SECURITY ANALYSIS"]
-        Secura["🧠 AI SECURA<br/>Security Reasoning & Threat Analysis"]
-        APIRIS["⚡ APIRIS<br/>API & Tool Intelligence"]
-    end
+pip install actshield
 ```
 
 ---
 
-# AI Secura
+## What it does
 
-## The Security Reasoning Layer
+AI agents can read documents, call APIs, browse the web, delegate to sub-agents, and execute tools against production systems. Standard application security does not account for the fact that the agent's reasoning — and therefore its actions — can be directly influenced by external content.
 
-AI Secura analyzes the security meaning of an action.
+ActShield sits between agents and the tools they can execute. It:
 
-It evaluates:
-
-```text
-Original Intent
-Agent Chain
-Delegation
-Context Provenance
-Taint
-Requested Capability
-Target Resource
-Previous Actions
-```
-
-And produces structured analysis such as:
-
-```text
-Threat
-Attack Type
-Intent Alignment
-Authority Violation
-Risk
-Confidence
-Reason
-Recommendation
-```
-
-For example:
-
-```json
-{
-  "threat": "indirect_prompt_injection",
-  "intent_alignment": "VIOLATED",
-  "authority_violation": true,
-  "risk": "CRITICAL",
-  "recommendation": "BLOCK"
-}
-```
-
-AI Secura provides **security reasoning**.
-
-It does not become the final authorization mechanism.
+1. **Observes** every context element that enters the agent system, records its origin, and marks its trust level
+2. **Correlates** agent identity, delegated authority, and context provenance before any tool request
+3. **Analyzes** intent using both deterministic rules and AI-powered reasoning (AI Secura / configurable providers)
+4. **Enforces** deterministic policy — allow, monitor, require human-in-the-loop, quarantine, block, or revoke
+5. **Records** structured evidence for every decision: who, what, when, why, context, authority, policy, outcome
+6. **Investigates** through a forensic engine that answers the full causal chain
+7. **Validates** the security boundary continuously with an adaptive offensive testing engine
+8. **Gates** deployment through CI/CD security quality controls
 
 ---
 
-# APIRIS
+## Architecture
 
-## API & Tool Intelligence
-
-AgentGuard also integrates APIRIS for API and tool intelligence.
-
-APIRIS analyzes signals such as:
-
-```text
-API / Tool
-Vendor
-Security Risk
-Anomalies
-CVE Signals
-Latency
-Cost
-Recommendation
 ```
-
-The separation is intentional:
-
-```mermaid
-flowchart TD
-    Secura["🧠 AI Secura"] -- "What does this action mean from a security perspective?" --> Policy
-    APIRIS["⚡ APIRIS"] -- "What do we know about the API / tool being used?" --> Policy
-    Policy["⚖️ Policy Engine"] --> Decision["'Is this action allowed?' (ALLOW / HITL / BLOCK)"]
-```
-
----
-
-# 04 — ENFORCE
-
-This is where AgentGuard differs from an AI-only security system.
-
-The AI can reason.
-
-But the policy engine makes the security decision.
-
-```mermaid
-flowchart TD
-    Analysis["🔍 SECURITY ANALYSIS (AI Secura + APIRIS)"] --> Policy["⚖️ DETERMINISTIC POLICY ENGINE"]
-    Policy --> Allow["✅ ALLOW"]
-    Policy --> HITL["⏳ HITL (Human Approval)"]
-    Policy --> Block["🚫 BLOCK"]
-```
-
-AgentGuard enforces deterministic controls around:
-
-```text
-Capability containment
-Delegation validity
-Trust level
-Taint boundaries
-Sensitive resources
-Authority boundaries
-Tool access
-Execution policy
-```
-
-### Core principle:
-
-> **LLM reasons. Deterministic policy enforces.**
-
----
-
-# The Attack We Built
-
-To demonstrate the problem, we built a complete multi-agent enterprise simulation.
-
-The benign task:
-
-> Generate a financial analysis.
-
-The architecture:
-
-```mermaid
-flowchart TD
-    User([👤 User]) --> Planner[Planner Agent]
-    Planner --> Research[Research Agent]
-    Research --> MCP[External MCP]
-    MCP --> Analysis[Analysis Agent]
-    Analysis --> DataAgent[Data Agent]
-    DataAgent --> DB[("Enterprise Database")]
-```
-
-Now introduce an indirect prompt injection.
-
-The external MCP returns a malicious instruction requesting internal customer records.
-
-AgentGuard sees:
-
-```mermaid
-flowchart TD
-    MCP["🔌 External MCP"] -->|Injects Malicious Instruction| Untrusted["⚠️ UNTRUSTED CONTEXT"]
-    Untrusted -->|Marks Lineage| Tainted["🔴 TAINTED CONTEXT"]
-    Tainted -->|Handoff| Analysis["Analysis Agent"]
-    Analysis -->|Propagates| DataAgent["Data Agent"]
-    DataAgent -.->|Attempts Execution| DBAction["customer_db.read"]
-    DBAction -.->|Intercepted| Policy["🛡️ POLICY: BLOCKED"]
-```
-
-The important part is that the malicious instruction did not need to directly call the database.
-
-It influenced an agent several steps later.
-
-AgentGuard preserves that causal relationship.
-
----
-
-# The Security Decision
-
-When the Data Agent attempts:
-
-```text
-customer_db.read
-```
-
-AgentGuard evaluates:
-
-```text
-Who?
-   ↓
-DataAgent
-
-What?
-   ↓
-customer_db.read
-
-Where did the context come from?
-   ↓
-External MCP
-
-Trust?
-   ↓
-UNTRUSTED
-
-Taint?
-   ↓
-TAINTED
-
-Authority?
-   ↓
-NOT CONTAINED
-
-Target?
-   ↓
-CRITICAL RESOURCE
-```
-
-The result:
-
-```mermaid
-flowchart TD
-    Eval["AgentGuard Context & Authority Evaluation"] --> Engine["⚖️ POLICY ENGINE"]
-    Engine --> Block["🚫 BLOCK"]
-    Block --> Metric["Sensitive DB Calls = 0"]
-```
-
-The most important distinction is:
-
-```text
-INTENDED       → NO
-REQUESTED      → YES
-ALLOWED        → NO
-ATTEMPTED      → YES
-EXECUTED       → NO
-```
-
-### Requested does not mean executed.
-
-This distinction becomes critical during incident response.
-
----
-
-# The Causal Security Graph
-
-AgentGuard doesn't represent the event as a flat log.
-
-It builds a causal graph.
-
-```mermaid
-flowchart TD
-    User([👤 User]) --> Planner[Planner Agent]
-    Planner -- "delegation" --> Research[Research Agent]
-    Research --> MCP[External MCP]
-    MCP -- "malicious context" --> Untrusted["UNTRUSTED CONTEXT"]
-    Untrusted -- "tainted" --> Analysis[Analysis Agent]
-    Analysis --> DataAgent[Data Agent]
-    DataAgent -- "attempted" --> Target["customer_db.read"]
-    Target --> Policy["⚖️ POLICY"]
-    Policy --> Block["🚫 BLOCK (DB Executions = 0)"]
-```
-
-This lets security teams investigate:
-
-> **What caused the action?**
-
-rather than simply:
-
-> **What was the last event?**
-
----
-
-# Authority Is Not Just Identity
-
-One of AgentGuard's core models is:
-
-```mermaid
-flowchart LR
-    Dec[DECLARED] --> Deleg[DELEGATED]
-    Deleg --> Eff[EFFECTIVE]
-    Eff --> Att[ATTEMPTED]
-    Att --> Act[ACTUAL]
-```
-
-For example:
-
-```mermaid
-flowchart TD
-    Planner["Planner Agent<br/><i>Declared: financial_analysis</i>"] -->|Delegated| Research["Research Agent<br/><i>Delegated: financial_document_search</i>"]
-    Research -->|Handoff| DataAgent["Data Agent<br/><i>Attempts: customer_db.read</i>"]
-    DataAgent --> Policy["⚖️ Policy: Authority Violation"]
-    Policy --> Block["Actual Execution: <b>BLOCKED</b>"]
-```
-
-This allows AgentGuard to distinguish:
-
-> What an agent **could** do
-
-from
-
-> What an agent **attempted** to do
-
-from
-
-> What an agent **actually did**
-
----
-
-# Context Provenance & Taint
-
-Autonomous systems increasingly consume information from outside their trust boundary.
-
-AgentGuard tracks where context originated.
-
-```mermaid
-flowchart LR
-    UI[User Input] --> Ctx[Context Object]
-    AO[Agent Output] --> Ctx
-    MCP[MCP Response] --> Ctx
-    DOC[External Document] --> Ctx
-    API[API Response] --> Ctx
-```
-
-Each context object can carry:
-
-```text
-Source
-Trust
-Provenance
-Taint
-Timestamp
-Parent
-Trace
-```
-
-For example:
-
-```mermaid
-flowchart TD
-    Source["Source: external_mcp<br/>Trust: UNTRUSTED<br/>Taint: TAINTED"] --> RA[Research Agent]
-    RA --> AA[Analysis Agent]
-    AA --> DA[Data Agent]
-    DA --> ST["Sensitive Tool (Blocked)"]
-```
-
-This prevents security context from disappearing when information moves between agents.
-
----
-
-# Defensive Security Is Only Half the Problem
-
-A security boundary that is never attacked is only a hypothesis.
-
-So AgentGuard includes an offensive validation engine.
-
-```mermaid
-flowchart TD
-    subgraph DefendSide ["DEFENSIVE CONTROL PLANE"]
-        Obs["Observe"] --> Corr["Correlate"]
-        Corr --> Ana["Analyze"]
-        Ana --> Enf["Enforce"]
-        Enf --> Evid["Runtime Evidence"]
-    end
-    subgraph OffendSide ["OFFENSIVE VALIDATION ENGINE"]
-        Seed["Attack Seed"] --> Mut["Mutation Engine"]
-        Mut --> Probe["Boundary Search"]
-        Probe --> Bypass{"Bypass Detected?"}
-        Bypass -- Yes --> Regr["Auto Regression Fixture"]
-        Regr --> Replay["Secured Replay Verification"]
-    end
-    Evid --> Seed
-    Replay --> Obs
-```
-
-The two sides form a continuous security loop:
-
-```mermaid
-flowchart LR
-    Defend["🛡️ DEFEND"] --> Attack["⚔️ ATTACK"]
-    Attack --> Observe["👁️ OBSERVE"]
-    Observe --> Learn["🧠 LEARN"]
-    Learn --> Improve["🔧 IMPROVE"]
-    Improve --> Replay["🔄 REPLAY"]
-```
-
----
-
-# Adaptive Offensive Validation
-
-Phase 5 extends static attack replay into adaptive security validation.
-
-```mermaid
-flowchart TD
-    A[Select Attack Seed] --> B[Observe Defense Response]
-    B --> C[Analyze Result]
-    C --> D[Understand Defense Boundary]
-    D --> E[Plan Mutation]
-    E --> F[Explore Boundary]
-    F --> G[Detect Bypass]
-    G --> H[Create Regression Fixture]
-    H --> I[Replay Against Secured System]
-```
-
-The system maintains full mutation lineage:
-
-```mermaid
-flowchart TD
-    Seed["🎯 Attack Seed: indirect_prompt_injection"]
-    Seed --> MutA["Mutation A (Taint Laundering)"]
-    Seed --> MutB["Mutation B (Tool Chain Escalation)"]
-    MutA --> MutA1["Mutation A1 (Depth Stacking)"]
-    MutA --> MutA2["Mutation A2 (Encoding Obfuscation)"]
-    MutB --> MutB1["Mutation B1 (Scope Shadowing)"]
-```
-
-Every node maintains:
-
-```text
-Attack ID
-Parent
-Depth
-Mutation
-Defense Response
+Agents
+   │
+   ▼
+ActShield SDK
+   │
+   ├── Identity & Agent Registry
+   ├── Delegation & Authority Containment
+   ├── Context Provenance Tracking
+   ├── Taint Tracking
+   ├── MCP Gateway
+   ├── HTTP Gateway
+   └── Tool Interception
+   │
+   ▼
+Security Analysis
+   │
+   ├── AI Secura / Configurable LLM Provider
+   └── APIRIS (API Risk Intelligence)
+   │
+   ▼
+Deterministic Policy Evaluator
+   │
+   ├── ALLOW
+   ├── MONITOR
+   ├── HITL (Human-in-the-Loop)
+   ├── QUARANTINE
+   ├── BLOCK
+   └── REVOKE
+   │
+   ▼
 Evidence
-Result
+   │
+   ├── Forensics & Causal Traces
+   ├── Incident Engine
+   ├── Drift Detection
+   ├── Posture Scoring
+   └── Security Gates
+   │
+   ▼
+Offensive Validation
+   │
+   └── Adaptive Attack Campaigns → Regression → Secured Replay
 ```
 
 ---
 
-# WHEN THE DEFENSE FAILS
+## Security Model
 
-```mermaid
-flowchart TD
-    subgraph VulnTarget ["VULNERABLE TARGET (UNSECURED)"]
-        Atk["Attack"] --> Allow["ALLOW"]
-        Allow --> Tool["Tool Executed"]
-        Tool --> DBCall["Sensitive DB Calls = 1"]
-        DBCall --> Bypass["🚨 BYPASS DETECTED"]
-    end
-    
-    subgraph AutoRegression ["AUTOMATED REGRESSION & SECURED REPLAY"]
-        Bypass --> Reg["📁 REGRESSION CREATED"]
-        Reg --> Replay["🔄 SECURED REPLAY"]
-        Replay --> Block["🛡️ BLOCK"]
-        Block --> Zero["Sensitive DB Calls = 0"]
-    end
-```
+**LLMs reason. Deterministic policies enforce.**
 
-> **“And we deliberately included a vulnerable target.**
-> 
-> **We found a controlled bypass where the sensitive operation actually executed.**
-> 
-> **AgentGuard captured runtime evidence, automatically turned it into a regression, and replayed it against the secured implementation.**
-> 
-> **The secured replay blocked it and the sensitive operation went back to zero.”**
+ActShield maintains a strict separation:
 
-### That demonstrates security engineering, not just detection.
+- **AI Secura** and other LLM providers provide advisory analysis — risk assessment, intent classification, anomaly detection
+- **PolicyEvaluator** makes the final enforcement decision deterministically based on rules, authority, taint state, and AI advisory score
+- If AI is unavailable, enforcement falls through to deterministic policy — never to ALLOW by default
+
+**Core invariants:**
+
+| Invariant | Description |
+|-----------|-------------|
+| Authority containment | Effective authority ≤ delegated authority ≤ declared authority |
+| Taint propagation | Context derived from untrusted sources is tainted and cannot authorize CRITICAL tool execution |
+| Fail-safe | AI failure → deterministic policy evaluation, not ALLOW |
+| Provenance | Every context element has a recorded origin and trust level |
+| Auditability | Every security decision produces structured, immutable evidence |
 
 ---
 
-# Phase 5 Validation
+## Installation
 
-Our controlled adaptive campaign produced:
-
-```text
-70 attack variants
-10 seed trees
-
-70 / 70 blocked
-0 unauthorized DB calls
-
-AI Secura availability: 100%
-APIRIS availability: 100%
-
-Mean latency: 0.64 ms
-P95 latency: 0.93 ms
+```bash
+pip install actshield
 ```
 
-We also demonstrated a deliberate vulnerable target:
+With optional AI provider support:
 
-```mermaid
-flowchart TD
-    Vuln["Vulnerable Target"] --> Res["ALLOW (Tool executed = true, DB calls = 1)"]
-    Res --> Det["🚨 BYPASS DETECTED"]
-    Det --> Reg["📁 REGRESSION CREATED"]
-    Reg --> Rep["🔄 SECURED REPLAY"]
-    Rep --> Blk["🛡️ BLOCK (DB calls = 0)"]
-```
-
-These results come from our controlled local validation environment and should not be interpreted as a guarantee against arbitrary real-world attacks.
-
----
-
-# LOCAL-ONLY OFFENSIVE SECURITY
-
-The offensive engine is deliberately constrained.
-
-```text
-OFFENSIVE_MODE = LOCAL_ONLY
-```
-
-The system refuses:
-
-```text
-External Targets
-External IPs
-Unapproved URLs
-Destructive Commands
-```
-
-All attack validation occurs against synthetic or explicitly controlled targets.
-
-The objective is:
-
-> **Break the defense without breaking the world.**
-
----
-
-# Forensics
-
-Detection is only the beginning.
-
-When something happens, the security team needs to reconstruct the event.
-
-AgentGuard's forensic model answers:
-
-```text
-WHO?
-WHY?
-WHAT CONTEXT?
-WHERE DID IT COME FROM?
-WHAT AUTHORITY EXISTED?
-WHAT WAS REQUESTED?
-WHAT WAS ATTEMPTED?
-WHAT WAS ACTUALLY EXECUTED?
-WHY WAS IT ALLOWED OR BLOCKED?
-```
-
-A forensic investigation can connect:
-
-```mermaid
-flowchart TD
-    Agent[Agent] --> Task[Task]
-    Task --> Del[Delegation]
-    Del --> Ctx[Context]
-    Ctx --> Prov[Provenance]
-    Prov --> Taint[Taint State]
-    Taint --> Auth[Authority]
-    Auth --> Tool[Tool Request]
-    Tool --> Policy[Policy Engine]
-    Policy --> Exec[Execution Evidence]
-    Exec --> Impact[Security Impact]
-```
-
-Instead of:
-
-> "Suspicious database access detected."
-
-The security team gets:
-
-> "DataAgent attempted `customer_db.read` after receiving tainted context originating from an untrusted external MCP response. The requested capability exceeded the effective delegated authority. Deterministic policy blocked the operation. Runtime evidence confirms zero sensitive database executions."
-
-That is the difference between an alert and a forensic explanation.
-
----
-
-# Why This Matters to a CISO
-
-AgentGuard is designed around five security outcomes.
-
-### 1. VISIBILITY
-Know what autonomous agents are actually doing.
-
-### 2. CONTROL
-Prevent actions that cross authority or trust boundaries.
-
-### 3. EXPLAINABILITY
-Understand why an agent took an action.
-
-### 4. CONTINUOUS VALIDATION
-Continuously attack the security boundary in a controlled environment.
-
-### 5. FORENSICS
-Distinguish:
-
-```mermaid
-flowchart LR
-    Req[Requested] --> Att[Attempted]
-    Att --> All[Allowed]
-    All --> Exec[Executed]
-    Att -.-> Blk[Blocked]
-```
-
-This turns autonomous AI from a black-box execution layer into an observable and enforceable security surface.
-
----
-
-# The Complete AgentGuard Architecture
-
-```mermaid
-flowchart TD
-    subgraph Enterprise ["ENTERPRISE AI LAYER"]
-        Agents["🤖 Autonomous Agents"]
-        MCP["🔌 MCP Servers"]
-        APIs["🌐 Tool & Resource APIs"]
-    end
-
-    Agents & MCP & APIs --> Observe["01 — OBSERVE (Telemetry & Spans)"]
-    Observe --> Correlate["02 — CORRELATE (Provenance & Causal DAG)"]
-    Correlate --> Analyze["03 — ANALYZE"]
-    
-    subgraph Intelligence ["SECURITY INTELLIGENCE"]
-        Secura["🧠 AI SECURA (Reasoning)"]
-        APIRIS["⚡ APIRIS (API Intelligence)"]
-    end
-    
-    Analyze --> Secura & APIRIS
-    Secura & APIRIS --> Enforce["04 — ENFORCE (Deterministic Policy)"]
-    
-    Enforce --> Allow["✅ ALLOW"]
-    Enforce --> HITL["⏳ HITL"]
-    Enforce --> Block["🚫 BLOCK"]
-    
-    Block & Allow & HITL --> Evidence["📁 Cryptographic Evidence Log"]
-    Evidence --> Forensics["🔍 Forensic Attribution Engine"]
-    Forensics --> Offensive["⚔️ Offensive Validation Engine"]
-    Offensive --> Regression["📁 Regression Suite & Replay"]
+```bash
+pip install actshield[openai]
+pip install actshield[gemini]
+pip install actshield[anthropic]
+pip install actshield[ollama]
+pip install actshield[dashboard]   # FastAPI + dashboard support
+pip install actshield[all]         # All optional dependencies
 ```
 
 ---
 
-# The Core Security Principle
+## Quick Start
 
-AgentGuard is built around one principle:
+### SDK
 
-> **The model can change its mind. The security boundary should not.**
+```python
+from actshield import ActShield
 
-AI models are probabilistic.
+guard = ActShield(mode="strict")
 
-Enterprise authorization cannot be.
+@guard.protect(tool="customer_db.read", sensitivity="critical")
+async def read_customer_data(query: str):
+    # This function will not execute without:
+    # - Valid agent authority for customer_db.read
+    # - Clean (non-tainted) context provenance
+    # - Policy evaluation: ALLOW or HITL
+    ...
+```
 
-That is why AgentGuard separates:
+### CLI
 
-```mermaid
-flowchart TD
-    A["🧠 AI REASONING + ⚡ API INTELLIGENCE"] --> B["⚖️ DETERMINISTIC POLICY ENGINE"]
-    B --> C["🛡️ EXECUTION CONTROL"]
-    C --> D["📁 RUNTIME EVIDENCE"]
+```bash
+# Start the security control plane
+actshield serve
+
+# System status
+actshield status
+
+# Security posture scorecard
+actshield posture
+
+# Registered agents
+actshield agents
+
+# Live event stream
+actshield watch
+
+# System diagnostic
+actshield doctor
+```
+
+### Dashboard
+
+```bash
+actshield serve
+# → http://localhost:3000
 ```
 
 ---
 
-# What AgentGuard Ultimately Provides
+## Threat Modeling
 
-```mermaid
-flowchart LR
-    ID[Identity] --- Auth[Authority]
-    Auth --- Ctx[Context]
-    Ctx --- Prov[Provenance]
-    Prov --- Intent[Intent]
-    Intent --- Taint[Taint]
-    Taint --- Policy[Policy]
-    Policy --- Evid[Evidence]
-    Evid --- Off[Offensive Validation]
-    Off --- Foren[Forensics]
-    Foren ==> AG["🛡️ AGENTGUARD CONTROL PLANE"]
+ActShield includes a formal threat modeling subsystem. The threat model sits above the runtime engine and maps assets, trust boundaries, and actors to the controls that protect them.
+
+```bash
+# Full threat analysis report
+actshield threat analyze
+
+# List all identified threats
+actshield threat list
+
+# Inspect a specific threat
+actshield threat inspect thr_indirect_pi
+
+# Render attack graph
+actshield threat graph
+
+# Generate Markdown report
+actshield threat report --output threat-report.md
+
+# Export JSON
+actshield threat export --format json --output threat-model.json
+```
+
+Example output:
+
+```
+ACTSHIELD  THREAT ANALYSIS
+System: ActShield-Monitored Agent System
+Analysis Time: 2026-09-21 08:30:00 UTC
+Overall Risk: 2.8 / 10.0
+
+Threat Inventory
+  Assets             8
+  Trust Boundaries   7
+  Threat Actors      8
+  Identified Threats 10
+  Attack Scenarios   3
+
+Severity Breakdown
+  CRITICAL    2  ██
+  HIGH        6  ██████
+  MEDIUM      1  █
+  LOW         1  █
+
+Control Domain Coverage
+  Identity               ✓
+  Authority              ✓
+  Context                ✓
+  Tool Security          ✓
+  MCP                    ✓
+  Data Access            ✓
+  Delegation             ✓
+  Enforcement            ✓
+  Evidence               ✓
 ```
 
 ---
 
-# From AI That Answers to AI That Acts
+## AI Providers
 
-The first generation of AI security asked:
+ActShield uses AI for security reasoning but does not depend on any single provider.
 
-> "Is this prompt safe?"
-
-The next generation needs to ask:
-
-> "Is this action safe?"
-
-And enterprise AI requires an even deeper question:
-
-> **"Is this action authorized, contextually valid, within delegated authority, and actually executed as intended?"**
-
-AgentGuard is built around that problem.
-
----
-
-# 🚀 The Vision
-
-As autonomous agents become part of enterprise workflows, security cannot remain attached only to the model.
-
-Security has to follow the action.
-
-Across:
-
-```mermaid
-flowchart LR
-    Agents[Agents] --> Del[Delegations]
-    Del --> MCP[MCP]
-    MCP --> APIs[APIs]
-    APIs --> Tools[Tools]
-    Tools --> Context[Context]
-    Context --> Authority[Authority]
-    Authority --> Resources[Resources]
-    Resources --> Execution[Execution]
+```yaml
+# actshield.yaml
+ai:
+  provider: ai_secura   # ai_secura | ollama | openai | gemini | anthropic | null
+  failure_mode: fail_safe
 ```
 
-That is the control plane AgentGuard is building.
+| Provider | Description |
+|----------|-------------|
+| `ai_secura` | Built-in security-specialized reasoning (default) |
+| `ollama` | Local LLM inference — no external API calls |
+| `openai` | OpenAI API |
+| `gemini` | Google Gemini API |
+| `anthropic` | Anthropic Claude API |
+| `null` | Deterministic-only mode — AI advisory disabled |
+
+```bash
+actshield ai list
+actshield ai use ollama
+actshield ai status
+```
 
 ---
 
-## The Future Is Not Just Agents That Can Act.
+## APIRIS
 
-# It Is Agents Whose Actions Have
+APIRIS (API Risk Intelligence Service) analyzes outbound API calls for risk signals: unusual endpoints, data exfiltration patterns, known-bad destinations, and protocol anomalies.
 
-## Identity.
-
-## Authority.
-
-## Context.
-
-## Control.
+```yaml
+apiris:
+  enabled: true
+  mode: strict
+```
 
 ---
 
-### AgentGuard
+## Enforcement Decisions
 
-**Observe. Correlate. Analyze. Enforce.**
+| Decision | Meaning |
+|----------|---------|
+| `ALLOW` | Request is within authority, context is clean, policy permits |
+| `MONITOR` | Request is permitted but flagged for observation |
+| `HITL` | Human approval required before execution |
+| `QUARANTINE` | Agent isolated pending investigation |
+| `BLOCK` | Request denied — authority, taint, or policy violation |
+| `REVOKE` | Agent authority revoked |
 
-**Attack the boundary. Prove it holds. Explain what happened.**
+---
+
+## Forensics
+
+```bash
+# Why did this event occur?
+actshield forensic why <event-id>
+
+# Investigate a full causal trace
+actshield forensic trace <trace-id>
+
+# Assess downstream impact
+actshield forensic impact <event-id>
+
+# Full forensic incident report
+actshield forensic report <incident-id>
+```
+
+The forensic engine answers:
+
+- WHO caused it and through which delegation chain?
+- WHAT context influenced the decision?
+- WHERE did that context originate?
+- WHAT authority existed at the time of execution?
+- WHY was it blocked or allowed?
+- WHAT changed after remediation?
+
+---
+
+## Offensive Validation
+
+ActShield includes an adaptive offensive security validation engine for testing the security boundary against a controlled corpus of attacks.
+
+```bash
+# Run adaptive attack campaign
+actshield attack adaptive
+
+# List available attack cases
+actshield attack list
+```
+
+> **Important:** The offensive engine operates in `LOCAL_ONLY` mode. It cannot target external systems.
+
+---
+
+## Security Gates (CI/CD)
+
+```bash
+actshield gate evaluate --min-score 85
+
+# Exit codes:
+# 0 = PASS
+# 1 = SECURITY FAILURE
+# 2 = SYSTEM/CONFIG ERROR
+```
+
+```bash
+actshield gate evaluate --json
+```
+
+Gate checks:
+- Posture score above threshold
+- No unauthorized sensitive executions
+- No bypass events
+- No open critical regressions
+- Offensive test pass rate
+
+---
+
+## Configuration
+
+`actshield.yaml`:
+
+```yaml
+version: 1
+
+runtime:
+  mode: strict   # strict | monitor | audit
+
+ai:
+  provider: ai_secura
+  failure_mode: fail_safe
+
+apiris:
+  enabled: true
+
+dashboard:
+  enabled: true
+  host: 127.0.0.1   # Never expose to 0.0.0.0 without explicit security controls
+
+telemetry:
+  enabled: true
+  structured_logging: true
+
+offensive:
+  mode: local_only   # local_only is the only supported mode
+
+storage:
+  backend: sqlite    # sqlite | postgres
+```
+
+Environment variable overrides:
+
+```bash
+ACTSHIELD_MODE=strict
+ACTSHIELD_AI_PROVIDER=ollama
+ACTSHIELD_APIRIS_ENABLED=true
+```
+
+---
+
+## Security Guarantees
+
+ActShield makes specific, verifiable security claims:
+
+1. **A tainted context cannot authorize CRITICAL tool execution** — taint propagation is deterministic; CRITICAL tools require explicit authority and clean provenance
+2. **AI failure cannot produce ALLOW** — if the AI provider is unavailable, enforcement falls through to deterministic policy with fail-safe defaults
+3. **Authority cannot be escalated beyond the delegation chain** — the containment invariant is enforced before any tool execution
+4. **Every enforcement decision produces evidence** — no security decision is made without a structured audit record
+5. **The offensive engine cannot target external systems** — LOCAL_ONLY is enforced at the engine level, not just configuration
+
+ActShield does **not** claim:
+- 100% prevention of all prompt injection (content-level semantic attacks remain a research problem)
+- Protection against malicious code executing inside a trusted process (supply chain attacks require defense-in-depth)
+- Compliance certification without additional implementation work
+
+---
+
+## Project Structure
+
+```
+actshield/
+├── sdk/
+│   └── actshield/
+│       ├── agents/           Agent identity and registry
+│       ├── api/              FastAPI REST endpoints
+│       ├── approval/         HITL approval management
+│       ├── cli/              Typer+Rich CLI
+│       ├── context/          Context + provenance + taint
+│       ├── decisions/        Security decision records
+│       ├── delegation/       Authority grants + delegation chains
+│       ├── drift/            Behavioral baseline + drift detection
+│       ├── evaluation/       Evaluation harness
+│       ├── forensics/        Causal investigation engine
+│       ├── gates/            CI/CD security quality gates
+│       ├── gateway/          MCP + HTTP gateway interceptors
+│       ├── incidents/        Incident state machine
+│       ├── integrations/     AI Secura + APIRIS + Ollama adapters
+│       ├── offensive/        Adaptive attack + mutation engine
+│       ├── persistence/      SQLite/Postgres + SIEM export
+│       ├── policy/           Deterministic policy evaluator
+│       ├── posture/          Security posture scoring
+│       ├── providers/        AI provider registry + adapters
+│       ├── response/         Automated response orchestration
+│       ├── risk/             Risk models and assessment
+│       ├── tasks/            Task tracking
+│       ├── threatmodel/      Formal threat modeling subsystem
+│       ├── tools/            Tool interception + sensitivity
+│       └── tracing/          Causal event tracing
+├── dashboard/                Next.js security console
+├── docs/
+│   ├── architecture/
+│   └── security/
+└── examples/
+```
+
+---
+
+## Running Tests
+
+```bash
+cd sdk
+pip install -e ".[dev]"
+pytest tests/ -v
+
+# Exclude tests requiring external services
+pytest tests/ -v -m "not ollama and not integration"
+```
+
+---
+
+## Performance
+
+| Metric | Target |
+|--------|--------|
+| Policy evaluation latency | < 5ms (deterministic path) |
+| Tool interception overhead | < 10ms (non-AI path) |
+| AI advisory latency | 100–2000ms (provider-dependent, async) |
+| Dashboard initial load | < 2s |
+| Event buffer | 500 events max in browser state |
+
+---
+
+## License
+
+Apache 2.0
+
+---
+
+*ActShield — Security Control Plane for Autonomous AI*

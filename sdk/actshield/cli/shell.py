@@ -1,4 +1,4 @@
-﻿"""ActShield Interactive Terminal Security Console (ag > shell)."""
+"""ActShield Interactive Terminal Security Console (ag > shell)."""
 from __future__ import annotations
 
 import os
@@ -397,5 +397,10 @@ class ActShieldShell:
                 border_style="green",
             )
         )
+
+
+# Backward compatibility alias
+AgentGuardShell = ActShieldShell
+
 
 

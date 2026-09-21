@@ -1,4 +1,4 @@
-﻿"""SIEM-Ready Security Event Formatter and Exporter.
+"""SIEM-Ready Security Event Formatter and Exporter.
 
 Supports enterprise SIEM formats:
 - JSON Lines (Elasticsearch / OpenSearch / Datadog / Splunk HEC)
@@ -34,7 +34,7 @@ class SIEMExporter:
                 "category": "security_audit",
                 "dataset": "actshield.events",
             },
-            "ActShield": {
+            "actshield": {
                 "trace_id": event.trace_id,
                 "span_id": event.span_id,
                 "agent_id": event.agent_id,
@@ -91,7 +91,8 @@ class SIEMExporter:
         """Format a single SecurityEvent in Syslog RFC 5424 style."""
         ts = event.timestamp.isoformat()
         payload_str = json.dumps(cls.format_event_json(event))
-        return f"<134>1 {ts} ActShield-runtime security-audit - {event.event_id} [ActShield@44400 trace_id=\"{event.trace_id}\" event_type=\"{event.event_type.value}\"] {payload_str}"
+        return f"<134>1 {ts} actshield-runtime security-audit - {event.event_id} [actshield@44400 trace_id=\"{event.trace_id}\" event_type=\"{event.event_type.value}\"] {payload_str}"
+
 
     @classmethod
     def to_syslog(cls, events: List[SecurityEvent]) -> str:

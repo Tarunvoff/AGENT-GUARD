@@ -1,4 +1,4 @@
-﻿"""ActShield central client and security runtime orchestrator."""
+"""ActShield central client and security runtime orchestrator."""
 
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -649,5 +649,10 @@ class ActShield:
     def print_causal_tree(self, trace_id: str) -> None:
         """Print the rendered causal tree directly to standard output."""
         print(self.render_causal_tree(trace_id))
+
+
+# Backward compatibility alias
+AgentGuard = ActShield
+
 
 

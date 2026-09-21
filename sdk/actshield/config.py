@@ -1,4 +1,4 @@
-﻿"""Configuration module for ActShield SDK."""
+"""Configuration module for ActShield SDK."""
 
 import re
 from typing import Any, Callable, Dict, List, Optional, Pattern
@@ -79,5 +79,10 @@ class ActShieldConfig(BaseModel):
         if self.custom_redactor:
             return self.custom_redactor(data)
         return default_redact_function(data)
+
+
+# Backward compatibility alias
+AgentGuardConfig = ActShieldConfig
+
 
 

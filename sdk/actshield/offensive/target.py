@@ -1,4 +1,4 @@
-﻿"""Attack target definition and registration registry."""
+"""Attack target definition and registration registry."""
 
 import os
 from enum import Enum
@@ -52,7 +52,7 @@ class TargetRegistry:
     def _register_default_sandbox(self) -> None:
         """Register the default local enterprise synthetic target."""
         default_target = AttackTarget(
-            target_id="ActShield-demo",
+            target_id="actshield-demo",
             name="Local Synthetic Enterprise Sandbox",
             environment=TargetEnvironment.LOCAL,
             synthetic=True,
@@ -64,6 +64,20 @@ class TargetRegistry:
             sensitive_db_name="customer_db",
         )
         self.register(default_target)
+        # Register legacy alias
+        legacy_target = AttackTarget(
+            target_id="agentguard-demo",
+            name="Local Synthetic Enterprise Sandbox (Legacy Alias)",
+            environment=TargetEnvironment.LOCAL,
+            synthetic=True,
+            allowed=True,
+            agents=["PlannerAgent", "ResearchAgent", "AnalysisAgent", "DataAgent"],
+            tools=["sec_edgar.fetch_filing", "web_search", "financial_extract", "customer_db.read", "http_post"],
+            resources=["public_filing_cache", "customer_pii_vault", "financial_ledger"],
+            protocols=["MCP", "HTTP"],
+            sensitive_db_name="customer_db",
+        )
+        self.register(legacy_target)
 
     def register(self, target: AttackTarget) -> None:
         """Register a new attack target with safety validation."""
@@ -73,16 +87,25 @@ class TargetRegistry:
                 f"Target must be synthetic=True, allowed=True, and local/sandbox."
             )
         self._targets[target.target_id] = target
+        self._targets[target.target_id.lower()] = target
 
     def get(self, target_id: str) -> Optional[AttackTarget]:
-        return self._targets.get(target_id)
+        return self._targets.get(target_id) or self._targets.get(target_id.lower())
 
     def list_targets(self) -> List[AttackTarget]:
-        return list(self._targets.values())
+        # Return unique targets
+        seen = set()
+        unique = []
+        for t in self._targets.values():
+            if t.target_id not in seen:
+                seen.add(t.target_id)
+                unique.append(t)
+        return unique
 
     def is_target_allowed(self, target_id: str) -> bool:
         target = self.get(target_id)
         return target is not None and target.is_safe_for_validation()
+
 
 
 # Global default registry instance

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Bell, ChevronRight, Command, Zap, Globe, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Bell, ChevronRight, Command, ShieldCheck, ShieldAlert, User, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -13,135 +13,142 @@ const BREADCRUMB_MAP: Record<string, string> = {
   '/delegations': 'Delegations',
   '/resources': 'Resources',
   '/access/matrix': 'Access Matrix',
-  '/access/snapshots': 'Snapshots',
   '/context': 'Context & Provenance',
-  '/tools': 'Tool / MCP Security',
+  '/tools': 'Tool & MCP Security',
+  '/threats': 'Threat Model',
+  '/ai-secura': 'AI Security Intelligence',
+  '/apiris': 'API Intelligence',
   '/attack-graph': 'Attack Graph',
   '/traces': 'Trace Explorer',
   '/incidents': 'Incidents',
   '/forensics': 'Forensics',
+  '/drift': 'Behavioral Drift',
   '/campaigns': 'Attack Campaigns',
-  '/regressions': 'Regressions',
-  '/policies': 'Policies',
-  '/ai-secura': 'AI Secura',
-  '/apiris': 'APIRIS',
   '/offensive': 'Offensive Validation',
-  '/api': 'API Console',
-  '/metrics': 'Metrics',
+  '/regressions': 'Regressions',
+  '/security-gates': 'Security Gates',
+  '/posture': 'Security Posture',
   '/reports': 'Reports',
   '/settings': 'Settings',
+  '/api': 'API Reference',
+  '/demo': 'Attack & Defense Lab',
 };
 
 export default function Topbar() {
   const pathname = usePathname();
   const [search, setSearch] = useState('');
   const [isLiveBackend, setIsLiveBackend] = useState<boolean | null>(null);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   const checkBackend = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/health', {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/health', {
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(2500),
       });
       setIsLiveBackend(res.ok);
     } catch {
-      // Fallback direct check
-      try {
-        const directRes = await fetch('http://127.0.0.1:8000/api/v1/health', {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(2000),
-        });
-        setIsLiveBackend(directRes.ok);
-      } catch {
-        setIsLiveBackend(false);
-      }
+      setIsLiveBackend(false);
     }
-    setLastUpdate(new Date());
   }, []);
 
   useEffect(() => {
     checkBackend();
-    const interval = setInterval(checkBackend, 25000); // Poll every 25 seconds
+    const interval = setInterval(checkBackend, 20000);
     return () => clearInterval(interval);
   }, [checkBackend]);
 
   const segments = pathname.split('/').filter(Boolean);
-  const breadcrumbs = ['AgentGuard', ...(BREADCRUMB_MAP[pathname] ? [BREADCRUMB_MAP[pathname]] : segments.map(s => s.charAt(0).toUpperCase() + s.slice(1)))];
+  const currentTitle = BREADCRUMB_MAP[pathname] || (segments.length ? segments[segments.length - 1].replace(/-/g, ' ') : 'Command Center');
 
   return (
-    <header className="h-12 bg-[#080c14] border-b border-zinc-800/50 flex items-center px-4 gap-4 sticky top-0 z-40">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-xs text-zinc-500 flex-shrink-0">
-        {breadcrumbs.map((crumb, i) => (
-          <span key={i} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight size={10} className="text-zinc-700" />}
-            <span className={i === breadcrumbs.length - 1 ? 'text-zinc-200 font-medium' : 'text-zinc-500'}>
-              {crumb}
-            </span>
-          </span>
-        ))}
-      </nav>
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 sticky top-0 z-40 shadow-xs">
+      {/* Left: Breadcrumbs / Page Context */}
+      <div className="flex items-center gap-2 text-xs text-slate-500 min-w-0">
+        <Link href="/dashboard" className="font-semibold text-slate-800 hover:text-sky-700 transition-colors flex items-center gap-1.5 flex-shrink-0">
+          <div className="w-5 h-5 rounded bg-sky-600 text-white flex items-center justify-center font-bold text-[10px]">
+            AS
+          </div>
+          <span>ActShield</span>
+        </Link>
+        <ChevronRight size={12} className="text-slate-400 flex-shrink-0" />
+        <span className="font-medium text-slate-900 truncate capitalize">
+          {currentTitle}
+        </span>
+      </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Center: Global Search */}
+      <div className="flex-1 max-w-md mx-6 hidden md:block">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search agents, traces, incidents, attacks…"
+            className="w-full pl-9 pr-12 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
+          />
+          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[9px] font-mono text-slate-400 bg-slate-100 border border-slate-200 rounded">
+            ⌘K
+          </kbd>
+        </div>
+      </div>
 
-      {/* Live backend connection indicator */}
-      <button
-        onClick={checkBackend}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer hover:opacity-80 ${
-          isLiveBackend === true
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-            : isLiveBackend === false
-            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-            : 'bg-zinc-900/60 border-zinc-800/50 text-zinc-500'
-        }`}
-        title={
-          isLiveBackend === true
-            ? 'Connected to live FastAPI backend at http://localhost:8000 (Click to recheck)'
-            : 'FastAPI backend offline — displaying demo fixture data (Click to recheck)'
-        }
-      >
-        <div
-          className={`w-1.5 h-1.5 rounded-full ${
+      {/* Right: Status & Controls */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Backend Connection Status */}
+        <button
+          onClick={checkBackend}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono border transition-colors cursor-pointer ${
             isLiveBackend === true
-              ? 'bg-emerald-400 animate-pulse'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
               : isLiveBackend === false
-              ? 'bg-amber-400'
-              : 'bg-zinc-500'
+              ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : 'bg-slate-50 border-slate-200 text-slate-500'
           }`}
-        />
-        <span>{isLiveBackend === true ? 'LIVE SDK (8000)' : isLiveBackend === false ? 'DEMO FIXTURES' : 'CONNECTING...'}</span>
-      </button>
+          title={
+            isLiveBackend === true
+              ? 'Connected to live FastAPI SDK backend at localhost:8000 (Click to refresh)'
+              : 'FastAPI backend offline — displaying cached/demo data (Click to recheck)'
+          }
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isLiveBackend === true
+                ? 'bg-emerald-600 animate-pulse'
+                : isLiveBackend === false
+                ? 'bg-amber-600'
+                : 'bg-slate-400'
+            }`}
+          />
+          <span className="font-semibold">
+            {isLiveBackend === true ? 'LIVE SDK' : isLiveBackend === false ? 'LOCAL DEMO' : 'CHECKING…'}
+          </span>
+        </button>
 
-      {/* Search */}
-      <div className="relative">
-        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search agents, traces, attacks…"
-          className="w-64 pl-7 pr-20 py-1.5 text-xs bg-zinc-900/60 border border-zinc-800/50 rounded-md text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/50 focus:bg-zinc-900"
-        />
-        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[9px] text-zinc-600 font-mono">
-          <Command size={9} />K
-        </kbd>
+        {/* Environment Badge */}
+        <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-slate-100 border border-slate-200 text-slate-700">
+          <span>● LOCAL</span>
+        </div>
+
+        {/* Notifications */}
+        <button className="relative p-1.5 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">
+          <Bell size={16} />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-sky-600 rounded-full" />
+        </button>
+
+        <div className="h-4 w-px bg-slate-200" />
+
+        {/* User / Org profile */}
+        <div className="flex items-center gap-2 pl-1 text-xs">
+          <div className="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center font-medium text-[11px]">
+            TA
+          </div>
+          <div className="hidden lg:block text-left leading-tight">
+            <div className="font-semibold text-slate-900 text-xs">Tarun</div>
+            <div className="text-[10px] text-slate-500">Security Admin</div>
+          </div>
+        </div>
       </div>
-
-      {/* Notifications */}
-      <button className="relative w-8 h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50">
-        <Bell size={14} />
-        <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
-      </button>
-
-      {/* Environment badge */}
-      <div className="px-2 py-1 rounded text-[10px] font-semibold tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-        LOCAL
-      </div>
-
-      {/* Version */}
-      <div className="text-[10px] text-zinc-600 font-mono">v0.4.0</div>
     </header>
   );
 }

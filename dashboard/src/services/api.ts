@@ -10,18 +10,16 @@ import type {
 
 import * as demo from '@/data/demo';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 async function apiFetch<T>(path: string, fallback: T): Promise<T> {
-  if (USE_MOCK) return fallback;
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const url = typeof window !== 'undefined' ? path : `${BASE_URL || 'http://localhost:8000'}${path}`;
+    const res = await fetch(url, {
       headers: { 'Accept': 'application/json' },
-      next: { revalidate: 5 },
     });
     if (!res.ok) return fallback;
-    return res.json() as T;
+    return (await res.json()) as T;
   } catch {
     return fallback;
   }

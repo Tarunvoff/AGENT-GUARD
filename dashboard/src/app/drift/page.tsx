@@ -13,7 +13,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
+const API_BASE = '/api/v1';
 
 interface DriftEvent {
   drift_id: string;

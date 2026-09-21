@@ -41,7 +41,8 @@ export default function Topbar() {
 
   const checkBackend = useCallback(async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/health', {
+      const url = typeof window !== 'undefined' ? '/api/v1/health' : 'http://127.0.0.1:8000/api/v1/health';
+      const res = await fetch(url, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(2500),
       });

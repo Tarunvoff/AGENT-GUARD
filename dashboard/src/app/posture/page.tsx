@@ -14,7 +14,7 @@ import { MetricCard } from '@/components/ui/MetricCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DataTable } from '@/components/ui/DataTable';
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
+const API_BASE = '/api/v1';
 
 interface PostureMetrics {
   unauthorized_access_attempts?: number;

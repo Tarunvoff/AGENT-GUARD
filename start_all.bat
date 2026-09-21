@@ -1,7 +1,9 @@
 @echo off
-title AgentGuard System Runner
+cd /d "%~dp0"
+title ActShield System Runner
 echo ========================================================
-echo Starting AgentGuard: Live Backend + Frontend Dashboard
+echo Starting ActShield: Live Backend + Frontend Dashboard
 echo ========================================================
 python run_live.py
 pause
+

@@ -1,42 +1,70 @@
 'use client';
 
 import { useState } from 'react';
-import { DEMO_FORENSIC_EXPLANATION, DEMO_AGENTS, DEMO_AGENT_PROFILES } from '@/data/demo';
-import { DecisionBadge, TrustBadge, TaintBadge, SensitivityBadge, CapabilityPill, AiVsPolicyNotice } from '@/components/ui/security';
-import { Brain, Zap, Shield, AlertTriangle, CheckCircle2, XCircle, ArrowRight, ChevronRight } from 'lucide-react';
+import { DEMO_AGENTS } from '@/data/demo';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ExecutionTruth } from '@/components/ui/ExecutionTruth';
+import { DataTable } from '@/components/ui/DataTable';
+import {
+  Brain, Shield, AlertTriangle, CheckCircle2, XCircle, ArrowRight,
+  ChevronRight, Lock, Database, Search, FileText, Layers, RefreshCw
+} from 'lucide-react';
 import Link from 'next/link';
 
-type ForensicTab = 'agents' | 'resources' | 'authority' | 'why-blocked' | 'access';
+type ForensicTab = 'why-blocked' | 'agents' | 'resources' | 'authority' | 'access';
+
+interface ForensicExplanationData {
+  event_id: string;
+  timestamp: string;
+  tool_name: string;
+  agent_id: string;
+  agent_trust: string;
+  context_trust: string;
+  resource_name: string;
+  resource_sensitivity: string;
+}
+
+const FORENSIC_EXP: ForensicExplanationData = {
+  event_id: 'evt_pinj_001',
+  timestamp: '2026-09-19T10:45:00Z',
+  tool_name: 'upload_s3',
+  agent_id: 'orchestrator_v2',
+  agent_trust: 'HIGH',
+  context_trust: 'UNTRUSTED',
+  resource_name: 's3://company-exports/customers.csv',
+  resource_sensitivity: 'CRITICAL',
+};
 
 export default function ForensicsPage() {
   const [tab, setTab] = useState<ForensicTab>('why-blocked');
-  const exp = DEMO_FORENSIC_EXPLANATION;
+  const exp = FORENSIC_EXP;
 
   return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div>
-        <h1 className="text-xl font-bold text-white">Forensic Investigation Workspace</h1>
-        <p className="text-sm text-zinc-500 mt-1">
-          Evidence-backed, deterministic forensic analysis. No AI inference in enforcement decisions.
-        </p>
-      </div>
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Forensic Investigation"
+        subtitle="Evidence-backed, deterministic causal analysis. Zero AI hallucination in enforcement explanations"
+        badge="Deterministic Forensics"
+      />
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-zinc-800/50 pb-0">
-        {([
-          ['why-blocked', 'Why Was This Blocked?'],
-          ['agents', 'Agent Forensics'],
-          ['resources', 'Resource Forensics'],
-          ['authority', 'Authority Forensics'],
-          ['access', 'Access Forensics'],
-        ] as [ForensicTab, string][]).map(([id, label]) => (
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 gap-6 text-sm font-medium">
+        {[
+          { id: 'why-blocked', label: 'Why Was This Blocked?' },
+          { id: 'agents', label: 'Agent Forensics' },
+          { id: 'resources', label: 'Resource Blast Radius' },
+          { id: 'authority', label: 'Authority Lineage' },
+          { id: 'access', label: 'Access Log Audit' },
+        ].map(({ id, label }) => (
           <button
             key={id}
-            onClick={() => setTab(id)}
-            className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px ${
+            onClick={() => setTab(id as ForensicTab)}
+            className={`pb-3 border-b-2 transition-colors ${
               tab === id
-                ? 'border-sky-500 text-sky-300'
-                : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                ? 'border-blue-600 text-blue-600 font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             {label}
@@ -56,137 +84,106 @@ export default function ForensicsPage() {
 
 // ─── Why Was This Blocked? ────────────────────────────────────────────────
 
-function WhyBlockedTab({ exp }: { exp: typeof DEMO_FORENSIC_EXPLANATION }) {
+function WhyBlockedTab({ exp }: { exp: ForensicExplanationData }) {
   return (
-    <div className="space-y-4">
-      {/* Question */}
-      <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-5 py-4">
-        <div className="text-lg font-bold text-red-300 mb-1">WHY WAS THIS ACTION BLOCKED?</div>
-        <div className="text-sm text-zinc-400">
-          <span className="font-mono font-semibold text-zinc-200">{exp.tool_name}</span>
-          {' '}attempted by{' '}
-          <span className="font-mono font-semibold text-zinc-200">{exp.agent_id}</span>
+    <div className="space-y-6">
+      {/* Root Incident Banner */}
+      <div className="bg-red-50/80 border border-red-200 rounded-lg p-5">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-700 mb-1.5">
+          <AlertTriangle size={15} />
+          <span>Deterministic Block Root Cause Verdict</span>
+        </div>
+        <div className="text-base font-bold text-slate-900">
+          Action <span className="font-mono text-red-700">{exp.tool_name}</span> attempted by agent <span className="font-mono text-blue-700">{exp.agent_id}</span> was rejected.
+        </div>
+        <div className="text-xs text-slate-600 mt-1">
+          Evaluation Timestamp: <span className="font-mono">{new Date(exp.timestamp).toUTCString()}</span> • Event ID: <span className="font-mono">{exp.event_id}</span>
         </div>
       </div>
 
-      {/* Causal chain visualization */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'ACTION', value: exp.tool_name, sub: 'Attempted tool call', color: 'border-red-500/30 text-red-300 bg-red-500/5' },
-          { label: 'REQUESTED BY', value: exp.agent_id, sub: 'Acting agent', color: 'border-zinc-700/50 text-zinc-300 bg-zinc-900/40' },
-          { label: 'CONTEXT SOURCE', value: 'External MCP', sub: 'Origin of taint', color: 'border-red-500/30 text-red-300 bg-red-500/5' },
-          { label: 'RESOURCE', value: exp.resource_name ?? '—', sub: `Sensitivity: ${exp.resource_sensitivity}`, color: 'border-red-600/40 text-red-400 bg-red-500/10' },
-        ].map(({ label, value, sub, color }) => (
-          <div key={label} className={`rounded-xl border px-4 py-3 ${color}`}>
-            <div className="text-[10px] font-semibold uppercase tracking-widest opacity-60 mb-1">{label}</div>
-            <div className="text-sm font-bold font-mono">{value}</div>
-            <div className="text-[10px] opacity-60 mt-0.5">{sub}</div>
-          </div>
-        ))}
+      {/* 4-Point Execution Truth */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">4-Point Execution State Verification</div>
+        <ExecutionTruth
+          intended={true}
+          requested={true}
+          allowed={false}
+          executed={false}
+          blockedAt="Deterministic Rule: pol_no_pii_export"
+        />
       </div>
 
-      {/* Evidence chain */}
-      <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-5">
-        <h3 className="text-sm font-semibold text-zinc-200 mb-4">Causal Evidence Chain</h3>
-        <div className="space-y-0">
+      {/* Key Forensic Attributes */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-xs">
+          <div className="text-[10px] uppercase font-semibold text-slate-500 mb-1">Attempted Action</div>
+          <div className="font-mono text-sm font-bold text-red-700">{exp.tool_name}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">High-risk external egress</div>
+        </div>
+        <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-xs">
+          <div className="text-[10px] uppercase font-semibold text-slate-500 mb-1">Acting Principal</div>
+          <div className="font-mono text-sm font-bold text-slate-800">{exp.agent_id}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Trust Level: {exp.agent_trust}</div>
+        </div>
+        <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-xs">
+          <div className="text-[10px] uppercase font-semibold text-slate-500 mb-1">Context Origin</div>
+          <div className="font-mono text-sm font-bold text-red-700">UNTRUSTED</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Taint Source: External MCP</div>
+        </div>
+        <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-xs">
+          <div className="text-[10px] uppercase font-semibold text-slate-500 mb-1">Target Sink</div>
+          <div className="font-mono text-sm font-bold text-slate-800">{exp.resource_name ?? 's3_exports'}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Sensitivity: {exp.resource_sensitivity}</div>
+        </div>
+      </div>
+
+      {/* Step-by-Step Causal Evidence Chain */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Causal Evidence Sequence</div>
+        <div className="space-y-3">
           {[
             {
               step: 1,
-              title: 'Context received from UNTRUSTED source',
-              detail: `Source: External MCP — trust_level: ${exp.context_trust}`,
-              color: 'border-l-amber-500', badge: 'UNTRUSTED',
-              badgeColor: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+              title: 'Context Ingestion from Untrusted Source',
+              detail: 'Agent received instruction payload from external untrusted MCP server containing suspected prompt injection pattern.',
+              status: 'TAINT DETECTED',
+              badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
             },
             {
               step: 2,
-              title: 'Context classified as TAINTED',
-              detail: `taint_state: ${exp.taint_state} — propagated through agent chain`,
-              color: 'border-l-red-500', badge: 'TAINTED',
-              badgeColor: 'bg-red-500/10 border-red-500/30 text-red-400',
+              title: 'Taint Propagation into Agent State',
+              detail: 'Execution runtime marked agent active memory as tainted with HIGH sensitivity level.',
+              status: 'STATE TAINTED',
+              badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
             },
             {
               step: 3,
-              title: 'Request targeted CRITICAL resource',
-              detail: `${exp.resource_name} — sensitivity: ${exp.resource_sensitivity}`,
-              color: 'border-l-red-600', badge: 'CRITICAL',
-              badgeColor: 'bg-red-500/15 border-red-600/30 text-red-300',
+              title: 'Egress Tool Invocation Request',
+              detail: 'Agent attempted invocation of upload_s3 to transmit sensitive database records to an external cloud bucket.',
+              status: 'SINK REACHED',
+              badgeColor: 'bg-blue-50 text-blue-800 border-blue-200',
             },
             {
               step: 4,
-              title: 'Effective authority did not contain requested capability',
-              detail: `requested: customer_db.read — effective: [${exp.delegated_authority.join(', ')}]`,
-              color: 'border-l-orange-500', badge: 'MISSING CAP',
-              badgeColor: 'bg-orange-500/10 border-orange-500/30 text-orange-400',
+              title: 'Deterministic Policy Enforcement Interception',
+              detail: 'Rule "pol_no_pii_export" evaluated true: Tainted agent blocked from invoking egress tools. Request aborted prior to network execution.',
+              status: 'BLOCKED',
+              badgeColor: 'bg-red-50 text-red-800 border-red-200 font-bold',
             },
-            {
-              step: 5,
-              title: 'Deterministic policy enforced BLOCK',
-              detail: `reason_code: ${exp.policy_reason_code}`,
-              color: 'border-l-red-600', badge: 'BLOCK',
-              badgeColor: 'bg-red-500/10 border-red-500/30 text-red-400',
-            },
-            {
-              step: 6,
-              title: 'Tool NOT executed — 0 sensitive DB calls',
-              detail: `execution_count: ${exp.execution_count} — sensitive_db_calls: ${exp.sensitive_db_calls}`,
-              color: 'border-l-emerald-500', badge: 'NOT EXECUTED',
-              badgeColor: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-            },
-          ].map(({ step, title, detail, color, badge, badgeColor }) => (
-            <div key={step} className={`relative pl-5 pb-4 border-l-2 ml-3 ${color} last:pb-0`}>
-              <div className={`absolute -left-2 top-0 w-4 h-4 rounded-full bg-zinc-900 border-2 ${color.replace('border-l-', 'border-')} flex items-center justify-center`}>
-                <span className="text-[8px] font-bold text-zinc-400">{step}</span>
+          ].map((item) => (
+            <div key={item.step} className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-4">
+              <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-mono text-xs font-bold flex-shrink-0 mt-0.5">
+                {item.step}
               </div>
-              <div className="ml-2">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-semibold text-zinc-200">{title}</span>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase ${badgeColor}`}>{badge}</span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-xs text-slate-900">{item.title}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded border font-mono ${item.badgeColor}`}>
+                    {item.status}
+                  </span>
                 </div>
-                <div className="text-[11px] font-mono text-zinc-500">{detail}</div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{item.detail}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* AI Secura vs Policy */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain size={14} className="text-violet-400" />
-            <span className="text-xs font-semibold text-violet-300 uppercase tracking-wider">AI Secura Analysis</span>
-            <span className="ml-auto text-[10px] text-violet-500 italic">Advisory only</span>
-          </div>
-          <div className="text-xs text-violet-200 leading-relaxed">{exp.ai_secura_summary}</div>
-        </div>
-        <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield size={14} className="text-sky-400" />
-            <span className="text-xs font-semibold text-sky-300 uppercase tracking-wider">Deterministic Policy Decision</span>
-            <span className="ml-auto text-[10px] text-sky-500 italic">Authoritative</span>
-          </div>
-          <div className="text-xs text-sky-200 leading-relaxed">{exp.policy_explanation}</div>
-        </div>
-      </div>
-
-      {/* Execution truth */}
-      <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Execution Truth</h3>
-        <div className="grid grid-cols-5 gap-2">
-          {[
-            { label: 'INTENDED', value: 'NO', ok: false },
-            { label: 'REQUESTED', value: 'YES', ok: false },
-            { label: 'ALLOWED', value: 'NO', ok: false },
-            { label: 'ATTEMPTED', value: 'YES', ok: false },
-            { label: 'EXECUTED', value: 'NO', ok: true },
-          ].map(({ label, value, ok }) => (
-            <div key={label} className={`rounded-lg border px-3 py-2 text-center ${
-              ok ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-zinc-800/60 bg-zinc-900/40'
-            }`}>
-              <div className="text-[9px] text-zinc-600 uppercase tracking-wider mb-1">{label}</div>
-              <div className={`text-sm font-bold ${
-                value === 'YES' ? 'text-amber-400' : ok ? 'text-emerald-400' : 'text-zinc-400'
-              }`}>{value}</div>
             </div>
           ))}
         </div>
@@ -198,119 +195,35 @@ function WhyBlockedTab({ exp }: { exp: typeof DEMO_FORENSIC_EXPLANATION }) {
 // ─── Agent Forensics ──────────────────────────────────────────────────────
 
 function AgentForensicsTab() {
-  const [selectedAgent, setSelectedAgent] = useState('agt_data');
-  const profile = DEMO_AGENT_PROFILES[selectedAgent];
-
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <div className="space-y-2">
-        <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Select Agent</div>
-        {Object.values(DEMO_AGENT_PROFILES).map(p => (
-          <button
-            key={p.agent_id}
-            onClick={() => setSelectedAgent(p.agent_id)}
-            className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
-              selectedAgent === p.agent_id
-                ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
-                : 'border-zinc-800/50 bg-zinc-900/30 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <div className="font-semibold">{p.agent_name}</div>
-            <div className="font-mono text-[10px] opacity-60">{p.agent_id}</div>
-          </button>
-        ))}
-      </div>
-
-      {profile && (
-        <div className="col-span-2 space-y-4">
-          <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-            <h3 className="text-sm font-semibold text-zinc-200 mb-3">{profile.agent_name} — Authority Breakdown</h3>
-            {[
-              { label: 'DECLARED', caps: profile.declared, color: 'text-sky-400', desc: 'Capabilities declared at registration' },
-              { label: 'DELEGATED', caps: profile.delegated, color: 'text-violet-400', desc: 'Capabilities received via delegation' },
-              { label: 'EFFECTIVE', caps: profile.effective, color: 'text-emerald-400', desc: 'declared ∪ delegated − restrictions' },
-              { label: 'RESTRICTED', caps: profile.restricted, color: 'text-red-400', desc: 'Explicitly denied capabilities' },
-            ].map(({ label, caps, color, desc }) => (
-              <div key={label} className="flex items-start gap-3 py-2 border-b border-zinc-800/30 last:border-0">
-                <div className="w-20 flex-shrink-0">
-                  <div className={`text-[10px] font-bold uppercase tracking-wider ${color}`}>{label}</div>
-                  <div className="text-[9px] text-zinc-600">{desc}</div>
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">Agent Trust Profiles & Capability Sets</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {DEMO_AGENTS.map((agent) => (
+            <div key={agent.agent_id} className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-mono font-semibold text-xs text-slate-900">{agent.agent_id}</div>
+                  <div className="text-[11px] text-slate-500">{agent.name}</div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {caps.length > 0
-                    ? caps.map(c => <CapabilityPill key={c} name={c} />)
-                    : <span className="text-[10px] text-zinc-700 italic">none</span>
-                  }
-                </div>
+                <StatusBadge status={agent.status === 'blocked' ? 'BLOCK' : 'ALLOW'} />
               </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-3">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Reachable Resources</div>
-              {profile.reachable_resources.map(r => (
-                <div key={r} className="text-xs text-emerald-400 flex items-center gap-1 py-0.5">
-                  <CheckCircle2 size={10} /> {r}
+              <div className="text-xs text-slate-600">
+                <div className="flex justify-between py-1 border-b border-slate-200">
+                  <span className="text-slate-500">Trust Level</span>
+                  <span className="font-mono font-medium">{agent.trust_level}</span>
                 </div>
-              ))}
-              {profile.reachable_resources.length === 0 && (
-                <div className="text-xs text-zinc-600 italic">No reachable resources</div>
-              )}
-            </div>
-            <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-3">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Access Stats</div>
-              {[
-                { label: 'Attempts', value: profile.total_attempts },
-                { label: 'Blocked', value: profile.total_blocked, color: 'text-red-400' },
-                { label: 'Allowed', value: profile.total_allowed, color: 'text-emerald-400' },
-                { label: 'Executed', value: profile.total_executions, color: 'text-sky-400' },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="flex justify-between text-xs py-0.5">
-                  <span className="text-zinc-500">{label}</span>
-                  <span className={`font-mono font-bold ${color ?? 'text-zinc-300'}`}>{value}</span>
+                <div className="flex justify-between py-1 border-b border-slate-200">
+                  <span className="text-slate-500">Capabilities</span>
+                  <span className="font-mono">{agent.capabilities.length} granted</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ResourceForensicsTab() {
-  return (
-    <div className="space-y-4">
-      <div className="text-sm text-zinc-400">Resource forensics — who could access, who attempted, who actually accessed.</div>
-      {/* Minimal placeholder — real version would show resource profiles */}
-      <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-6 text-center">
-        <div className="text-zinc-600 text-sm">Select a resource to inspect its forensic access profile.</div>
-        <Link href="/resources" className="mt-3 inline-flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300">
-          View Resources <ArrowRight size={12} />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function AuthorityForensicsTab() {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-        <h3 className="text-sm font-semibold text-zinc-200 mb-3">Delegation Graph</h3>
-        <div className="space-y-2 text-xs">
-          {[
-            { from: 'PlannerAgent (HIGH)', to: 'ResearchAgent', caps: ['public_search', 'mcp.read'], depth: 0 },
-            { from: 'ResearchAgent', to: 'AnalysisAgent', caps: ['public_search'], depth: 1 },
-            { from: 'PlannerAgent (HIGH)', to: 'DataAgent', caps: ['financial_extract'], depth: 0 },
-          ].map(({ from, to, caps, depth }) => (
-            <div key={`${from}-${to}`} className="flex items-center gap-2 py-2 border-b border-zinc-800/30 last:border-0">
-              <div style={{ marginLeft: depth * 20 }} className="flex items-center gap-2">
-                <span className="text-zinc-400">{from}</span>
-                <ArrowRight size={10} className="text-zinc-600" />
-                <span className="text-zinc-300 font-medium">{to}</span>
-                <div className="flex gap-1">{caps.map(c => <CapabilityPill key={c} name={c} />)}</div>
+                <div className="flex justify-between py-1">
+                  <span className="text-slate-500">Risk Level</span>
+                  <span className={`font-mono font-bold ${agent.risk_level === 'CRITICAL' ? 'text-red-600' : 'text-slate-700'}`}>
+                    {agent.risk_level || 'LOW'}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -320,26 +233,72 @@ function AuthorityForensicsTab() {
   );
 }
 
-function AccessForensicsTab() {
-  const exp = DEMO_FORENSIC_EXPLANATION;
+// ─── Resource Forensics ───────────────────────────────────────────────────
+
+function ResourceForensicsTab() {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-        <h3 className="text-sm font-semibold text-zinc-200 mb-3">Access Forensics — customer_db_read</h3>
-        <div className="space-y-2 text-xs">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">Resource Blast Radius Analysis</div>
+        <div className="space-y-3">
           {[
-            { label: 'Tool', value: exp.tool_name },
-            { label: 'Resource', value: exp.resource_name },
-            { label: 'Sensitivity', value: exp.resource_sensitivity },
-            { label: 'Taint', value: exp.taint_state },
-            { label: 'Decision', value: exp.policy_decision },
-            { label: 'Executed', value: String(exp.tool_executed) },
-            { label: 'Execution count', value: String(exp.execution_count) },
-            { label: 'Sensitive DB calls', value: String(exp.sensitive_db_calls) },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between border-b border-zinc-800/30 py-1.5 last:border-0">
-              <span className="text-zinc-500">{label}</span>
-              <span className="font-mono text-zinc-300">{value}</span>
+            { name: 'customers', type: 'Database (PII)', blast: 'CRITICAL', reach: '2 Agents', risk: 'HIGH' },
+            { name: 'orders', type: 'Database (Orders)', blast: 'MEDIUM', reach: '4 Agents', risk: 'LOW' },
+            { name: 's3://company-exports/', type: 'Cloud Storage', blast: 'CRITICAL', reach: '0 Agents (Quarantine)', risk: 'ZERO-TRUST' },
+          ].map((r) => (
+            <div key={r.name} className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+              <div>
+                <div className="font-mono font-bold text-slate-900">{r.name}</div>
+                <div className="text-slate-500">{r.type}</div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="font-mono text-slate-600">{r.reach}</span>
+                <span className="px-2 py-0.5 rounded border bg-red-50 text-red-700 border-red-200 font-semibold font-mono">
+                  {r.blast} BLAST
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Authority Forensics ──────────────────────────────────────────────────
+
+function AuthorityForensicsTab() {
+  return (
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">Authority Proofs & Nonce Verification</div>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Every agent action must present an unforgeable, cryptographically signed delegation token containing root provenance nonces.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Access Forensics ─────────────────────────────────────────────────────
+
+function AccessForensicsTab() {
+  return (
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">Audit Access Log Events</div>
+        <div className="space-y-2">
+          {[
+            { time: '10:30:14 UTC', actor: 'escalation_agent', action: 'write_s3', target: 's3://company-exports', decision: 'BLOCK' },
+            { time: '10:28:45 UTC', actor: 'data_agent', action: 'read_db', target: 'orders', decision: 'ALLOW' },
+            { time: '10:15:02 UTC', actor: 'orchestrator_v2', action: 'generate_summary', target: 'internal_llm', decision: 'ALLOW' },
+          ].map((item, i) => (
+            <div key={i} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs font-mono">
+              <span className="text-slate-500">{item.time}</span>
+              <span className="text-slate-900 font-semibold">{item.actor}</span>
+              <span className="text-blue-700">{item.action}</span>
+              <span className="text-slate-600">{item.target}</span>
+              <StatusBadge status={item.decision as 'ALLOW' | 'BLOCK'} />
             </div>
           ))}
         </div>

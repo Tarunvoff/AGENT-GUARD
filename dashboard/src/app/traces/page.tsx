@@ -1,11 +1,36 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, GitBranch, ArrowRight, Clock, Cpu, Shield, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
-import { DecisionBadge, TaintBadge } from '@/components/ui/security';
-import Link from 'next/link';
+import { Search, GitBranch, ArrowRight, Clock, Shield, AlertTriangle, CheckCircle2, Layers } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
-const DEMO_TRACES = [
+interface SpanItem {
+  span_id: string;
+  name: string;
+  duration_ms: number;
+  taint: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  decision: 'ALLOW' | 'BLOCK' | 'HITL';
+  flags?: string[];
+}
+
+interface TraceItem {
+  trace_id: string;
+  name: string;
+  agent_id: string;
+  task_id: string;
+  started_at: string;
+  duration_ms: number;
+  decision: 'ALLOW' | 'BLOCK' | 'HITL';
+  spans: SpanItem[];
+  causal_explanation: string;
+}
+
+const DEMO_TRACES: TraceItem[] = [
   {
     trace_id: 'trc_pinj_001',
     name: 'Prompt Injection → Data Exfil Attempt',
@@ -19,7 +44,7 @@ const DEMO_TRACES = [
       { span_id: 'sp_002', name: 'call_external_mcp_tool', duration_ms: 234, taint: 'CRITICAL', decision: 'BLOCK', flags: ['PROMPT_INJECTION'] },
       { span_id: 'sp_003', name: 'attempt_upload_s3', duration_ms: 0, taint: 'CRITICAL', decision: 'BLOCK', flags: ['BLOCKED_BY_POLICY'] },
     ],
-    causal_explanation: 'External MCP tool injected malicious instruction. Orchestrator attempted to upload PII to external S3. Both tool call and upload were blocked.',
+    causal_explanation: 'External MCP tool injected malicious instruction. Orchestrator attempted to upload PII to external S3. Both tool call and upload were deterministically blocked.',
   },
   {
     trace_id: 'trc_auth_esc_001',
@@ -34,7 +59,7 @@ const DEMO_TRACES = [
       { span_id: 'sp_012', name: 'delegation_check', duration_ms: 45, taint: 'LOW', decision: 'BLOCK', flags: ['AUTHORITY_EXCEEDED'] },
       { span_id: 'sp_013', name: 'attempt_send_email', duration_ms: 0, taint: 'HIGH', decision: 'BLOCK', flags: ['BLOCKED_BY_POLICY'] },
     ],
-    causal_explanation: 'Agent requested email_api and export_pii capabilities beyond its delegated authority. Delegation check failed — authority containment enforced.',
+    causal_explanation: 'Agent requested email_api and export_pii capabilities beyond its delegated authority. Delegation containment check failed.',
   },
   {
     trace_id: 'trc_q3_analysis',
@@ -42,7 +67,7 @@ const DEMO_TRACES = [
     agent_id: 'orchestrator_v2',
     task_id: 'task_001',
     started_at: '2026-09-19T08:00:00Z',
-    duration_ms: 332000,
+    duration_ms: 3320,
     decision: 'ALLOW',
     spans: [
       { span_id: 'sp_021', name: 'read_file:q3_financials', duration_ms: 45, taint: 'LOW', decision: 'ALLOW' },
@@ -50,166 +75,188 @@ const DEMO_TRACES = [
       { span_id: 'sp_023', name: 'generate_summary', duration_ms: 2800, taint: 'LOW', decision: 'ALLOW' },
       { span_id: 'sp_024', name: 'write_report', duration_ms: 120, taint: 'LOW', decision: 'ALLOW' },
     ],
-    causal_explanation: 'Clean task execution within delegated authority. All tools permitted. No taint propagation. Report written to internal storage only.',
+    causal_explanation: 'Clean task execution within delegated authority. All tools permitted. No taint propagation.',
   },
 ];
 
-const SPAN_COLORS: Record<string, string> = {
-  ALLOW: 'bg-emerald-500',
-  BLOCK: 'bg-red-500',
-  HITL: 'bg-amber-500',
-};
-
 export default function TracesPage() {
   const [search, setSearch] = useState('');
-  const [selectedTrace, setSelectedTrace] = useState<typeof DEMO_TRACES[0] | null>(null);
-  const [decisionFilter, setDecisionFilter] = useState('all');
+  const [decisionFilter, setDecisionFilter] = useState('ALL');
+  const [selectedTrace, setSelectedTrace] = useState<TraceItem | null>(null);
+
+  const blockedCount = DEMO_TRACES.filter(t => t.decision === 'BLOCK').length;
+  const allowCount = DEMO_TRACES.filter(t => t.decision === 'ALLOW').length;
 
   const filtered = DEMO_TRACES.filter(t => {
-    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.agent_id.includes(search);
-    const matchDec = decisionFilter === 'all' || t.decision === decisionFilter;
+    const matchSearch =
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.agent_id.toLowerCase().includes(search.toLowerCase()) ||
+      t.trace_id.toLowerCase().includes(search.toLowerCase()) ||
+      t.task_id.toLowerCase().includes(search.toLowerCase());
+
+    const matchDec = decisionFilter === 'ALL' || t.decision === decisionFilter;
+
     return matchSearch && matchDec;
   });
 
-  return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div>
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <Search size={18} className="text-sky-400" />
-          Trace Explorer
-        </h1>
-        <p className="text-sm text-zinc-500 mt-1">End-to-end causal execution traces with span-level decision evidence</p>
-      </div>
-
-      {/* Search + Filter */}
-      <div className="flex gap-3 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search traces, agents..."
-            className="w-full pl-8 pr-3 py-2 bg-zinc-800/60 border border-zinc-700/50 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/50"
-          />
+  const columns = [
+    {
+      key: 'name',
+      header: 'Trace Name & ID',
+      render: (row: TraceItem) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200">
+            <GitBranch size={13} />
+          </div>
+          <div>
+            <div className="font-semibold text-xs text-slate-900">{row.name}</div>
+            <div className="font-mono text-[10px] text-slate-500">{row.trace_id}</div>
+          </div>
         </div>
-        {['all', 'ALLOW', 'BLOCK', 'HITL'].map(f => (
-          <button key={f} onClick={() => setDecisionFilter(f)}
-            className={`px-2.5 py-1 text-[11px] rounded font-medium uppercase tracking-wider transition-colors ${
-              decisionFilter === f ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'
-            }`}>
-            {f}
-          </button>
-        ))}
+      ),
+    },
+    {
+      key: 'agent_id',
+      header: 'Acting Agent',
+      width: '160px',
+      render: (row: TraceItem) => (
+        <span className="font-mono text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+          {row.agent_id}
+        </span>
+      ),
+    },
+    {
+      key: 'spans',
+      header: 'Spans Timeline',
+      render: (row: TraceItem) => (
+        <div className="flex items-center gap-1">
+          {row.spans.map(span => (
+            <div
+              key={span.span_id}
+              title={`${span.name} (${span.decision})`}
+              className={`h-2 rounded-xs transition-all ${
+                span.decision === 'BLOCK' ? 'bg-red-500 w-6' : span.decision === 'HITL' ? 'bg-amber-500 w-6' : 'bg-emerald-500 w-4'
+              }`}
+            />
+          ))}
+          <span className="font-mono text-[10px] text-slate-500 ml-1.5">{row.spans.length} spans</span>
+        </div>
+      ),
+    },
+    {
+      key: 'duration_ms',
+      header: 'Duration',
+      width: '110px',
+      render: (row: TraceItem) => (
+        <span className="font-mono text-xs text-slate-600">{row.duration_ms} ms</span>
+      ),
+    },
+    {
+      key: 'decision',
+      header: 'Verdict',
+      width: '120px',
+      render: (row: TraceItem) => (
+        <StatusBadge status={row.decision} />
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Execution Traces"
+        subtitle="End-to-end causal execution traces with span-level decision evidence and taint timelines"
+        badge="Trace Explorer"
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Total Traces" value={DEMO_TRACES.length} />
+        <MetricCard label="Blocked Invocations" value={blockedCount} status="BLOCK" />
+        <MetricCard label="Clean Executions" value={allowCount} status="ALLOW" />
+        <MetricCard label="Mean Latency" value="1.42 ms" />
       </div>
 
-      <div className="grid grid-cols-5 gap-4">
-        {/* Trace List */}
-        <div className="col-span-2 space-y-2">
-          {filtered.map(trace => (
-            <div
-              key={trace.trace_id}
-              onClick={() => setSelectedTrace(trace)}
-              className={`rounded-xl border p-3 cursor-pointer transition-all ${
-                selectedTrace?.trace_id === trace.trace_id
-                  ? 'border-sky-500/40 bg-sky-500/5'
-                  : trace.decision === 'BLOCK'
-                  ? 'border-red-500/30 bg-red-500/5 hover:border-red-500/50'
-                  : 'border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700/50'
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-mono text-[10px] text-zinc-500">{trace.trace_id}</span>
-                    <DecisionBadge decision={trace.decision as any} />
-                  </div>
-                  <div className="text-sm text-zinc-200 font-medium mb-1 leading-snug">{trace.name}</div>
-                  <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                    <span className="font-mono">{trace.agent_id}</span>
-                    <span>•</span>
-                    <span>{trace.spans.length} spans</span>
-                    <span>•</span>
-                    <span>{trace.duration_ms > 1000 ? `${(trace.duration_ms / 1000).toFixed(1)}s` : `${trace.duration_ms}ms`}</span>
-                  </div>
-                </div>
-              </div>
+      {/* Filter and Table */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search traces by name, ID, or agent..."
+          filters={[
+            {
+              key: 'decision',
+              label: 'Verdict',
+              options: [
+                { label: 'All Verdicts', value: 'ALL' },
+                { label: 'Block', value: 'BLOCK' },
+                { label: 'Allow', value: 'ALLOW' },
+                { label: 'HITL', value: 'HITL' },
+              ],
+              value: decisionFilter,
+              onChange: setDecisionFilter,
+            },
+          ]}
+          activeCount={decisionFilter !== 'ALL' || search ? 1 : 0}
+          onReset={() => {
+            setSearch('');
+            setDecisionFilter('ALL');
+          }}
+        />
 
-              {/* Span timeline bar */}
-              <div className="flex gap-0.5 mt-2 h-1.5 rounded overflow-hidden">
-                {trace.spans.map(span => (
-                  <div
-                    key={span.span_id}
-                    className={`${SPAN_COLORS[span.decision] || 'bg-zinc-600'} rounded-sm`}
-                    style={{ flex: Math.max(span.duration_ms, 10) }}
-                    title={`${span.name}: ${span.decision}`}
-                  />
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="trace_id"
+          onRowClick={(row) => setSelectedTrace(row)}
+          emptyMessage="No traces matched your filter criteria."
+        />
+      </div>
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedTrace}
+        onClose={() => setSelectedTrace(null)}
+        title={selectedTrace ? selectedTrace.name : ''}
+        subtitle={selectedTrace ? `Trace ID: ${selectedTrace.trace_id} • Agent: ${selectedTrace.agent_id}` : ''}
+        badge={selectedTrace ? <StatusBadge status={selectedTrace.decision} /> : null}
+      >
+        {selectedTrace && (
+          <div className="space-y-6">
+            {/* Causal Explanation */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Causal Explanation</div>
+              <p className="text-xs text-slate-800 leading-relaxed">{selectedTrace.causal_explanation}</p>
+            </div>
+
+            {/* Spans List */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Execution Spans Sequence</div>
+              <div className="space-y-2">
+                {selectedTrace.spans.map((span, idx) => (
+                  <div key={span.span_id} className="p-3 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-[10px] text-slate-400">#{idx + 1}</span>
+                      <div>
+                        <div className="font-mono font-semibold text-slate-900">{span.name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{span.duration_ms} ms • Taint: {span.taint}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {span.flags?.map(f => (
+                        <span key={f} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 font-mono">
+                          {f}
+                        </span>
+                      ))}
+                      <StatusBadge status={span.decision} />
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Trace Detail */}
-        <div className="col-span-3 rounded-xl border border-zinc-800/50 bg-zinc-900/30">
-          {selectedTrace ? (
-            <div className="p-4 space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <DecisionBadge decision={selectedTrace.decision as any} />
-                  <span className="font-mono text-[11px] text-zinc-500">{selectedTrace.trace_id}</span>
-                </div>
-                <h2 className="text-base font-semibold text-zinc-100">{selectedTrace.name}</h2>
-                <p className="text-xs text-zinc-500 mt-1">Agent: {selectedTrace.agent_id} • Task: {selectedTrace.task_id}</p>
-              </div>
-
-              {/* Causal explanation */}
-              <div className="rounded-lg bg-sky-500/5 border border-sky-500/20 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-sky-400 mb-1.5">Causal Explanation</div>
-                <p className="text-xs text-zinc-300">{selectedTrace.causal_explanation}</p>
-              </div>
-
-              {/* Spans */}
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Execution Spans</div>
-                <div className="space-y-2">
-                  {selectedTrace.spans.map((span, i) => (
-                    <div key={span.span_id} className={`rounded-lg border p-3 ${
-                      span.decision === 'BLOCK' ? 'border-red-500/30 bg-red-500/5' : 'border-zinc-800/50 bg-zinc-900/20'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-zinc-600 font-mono">{i + 1}</span>
-                        <div className={`w-2 h-2 rounded-full ${SPAN_COLORS[span.decision] || 'bg-zinc-600'}`} />
-                        <span className="font-mono text-xs text-zinc-300">{span.name}</span>
-                        <div className="flex-1" />
-                        <DecisionBadge decision={span.decision as any} />
-                        <span className="text-[10px] text-zinc-600 font-mono">{span.duration_ms}ms</span>
-                      </div>
-                      {span.flags && (
-                        <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                          {span.flags.map(f => (
-                            <span key={f} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">{f}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Link href="/forensics" className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 transition-colors">
-                  Full Forensics <ArrowRight size={11} />
-                </Link>
-                <Link href="/attack-graph" className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Attack Graph <ArrowRight size={11} />
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-zinc-600 text-sm">
-              <GitBranch size={28} className="mb-2 opacity-30" />
-              Select a trace to inspect
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

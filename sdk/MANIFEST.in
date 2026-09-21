@@ -1,0 +1,2 @@
+include actshield/py.typed
+recursive-include actshield/static *

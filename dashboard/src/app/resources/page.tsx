@@ -1,11 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { Database, Search, Lock, AlertTriangle, CheckCircle2, Shield, Eye, Filter } from 'lucide-react';
-import { TrustBadge, SensitivityBadge } from '@/components/ui/security';
-import Link from 'next/link';
+import { Database, Lock, AlertTriangle, Shield, Eye, Filter, FileText, Cloud, Globe } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
-const DEMO_RESOURCES = [
+interface ResourceItem {
+  resource_id: string;
+  name: string;
+  type: string;
+  sensitivity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  description: string;
+  access_count_24h: number;
+  blocked_attempts_24h: number;
+  agents_with_access: string[];
+  requires_hitl: boolean;
+  taint_level: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+const DEMO_RESOURCES: ResourceItem[] = [
   {
     resource_id: 'res_db_customers',
     name: 'customers',
@@ -80,130 +97,242 @@ const DEMO_RESOURCES = [
   },
 ];
 
-const SENSITIVITY_STYLES: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-500/10 border-red-500/30',
-  HIGH: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
-  MEDIUM: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  LOW: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+const SENSITIVITY_CLASSES: Record<string, string> = {
+  CRITICAL: 'bg-red-50 text-red-700 border-red-200 font-semibold',
+  HIGH: 'bg-amber-50 text-amber-700 border-amber-200 font-medium',
+  MEDIUM: 'bg-blue-50 text-blue-700 border-blue-200',
+  LOW: 'bg-slate-50 text-slate-700 border-slate-200',
 };
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   database_table: Database,
-  file: Shield,
-  cloud_storage: Database,
-  external_api: Filter,
+  file: FileText,
+  cloud_storage: Cloud,
+  external_api: Globe,
 };
 
 export default function ResourcesPage() {
   const [search, setSearch] = useState('');
-  const [sensitFilter, setSensitFilter] = useState('all');
+  const [sensitFilter, setSensitFilter] = useState('ALL');
+  const [selectedResource, setSelectedResource] = useState<ResourceItem | null>(null);
+
+  const totalAccesses = DEMO_RESOURCES.reduce((s, r) => s + r.access_count_24h, 0);
+  const totalBlocked = DEMO_RESOURCES.reduce((s, r) => s + r.blocked_attempts_24h, 0);
+  const criticalCount = DEMO_RESOURCES.filter(r => r.sensitivity === 'CRITICAL').length;
 
   const filtered = DEMO_RESOURCES.filter(r => {
-    const matchSearch = r.name.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase());
-    const matchSensit = sensitFilter === 'all' || r.sensitivity === sensitFilter;
+    const matchSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.description.toLowerCase().includes(search.toLowerCase()) ||
+      r.resource_id.toLowerCase().includes(search.toLowerCase());
+
+    const matchSensit = sensitFilter === 'ALL' || r.sensitivity === sensitFilter;
     return matchSearch && matchSensit;
   });
 
+  const columns = [
+    {
+      key: 'name',
+      header: 'Resource',
+      render: (row: ResourceItem) => {
+        const Icon = TYPE_ICONS[row.type] || Database;
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200">
+              <Icon size={14} />
+            </div>
+            <div>
+              <div className="font-mono text-xs font-semibold text-slate-900">{row.name}</div>
+              <div className="text-[11px] text-slate-500">{row.description}</div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      width: '130px',
+      render: (row: ResourceItem) => (
+        <span className="text-xs font-mono text-slate-600 uppercase bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+          {row.type.replace('_', ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'sensitivity',
+      header: 'Sensitivity',
+      width: '110px',
+      render: (row: ResourceItem) => (
+        <span className={`text-[11px] px-2 py-0.5 rounded border ${SENSITIVITY_CLASSES[row.sensitivity]}`}>
+          {row.sensitivity}
+        </span>
+      ),
+    },
+    {
+      key: 'requires_hitl',
+      header: 'HITL Gated',
+      width: '110px',
+      render: (row: ResourceItem) => (
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
+          row.requires_hitl ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'
+        }`}>
+          {row.requires_hitl ? 'Required' : 'Automated'}
+        </span>
+      ),
+    },
+    {
+      key: 'access_count_24h',
+      header: 'Accesses (24h)',
+      width: '120px',
+      render: (row: ResourceItem) => (
+        <span className="font-mono text-xs text-slate-700">{row.access_count_24h}</span>
+      ),
+    },
+    {
+      key: 'blocked_attempts_24h',
+      header: 'Blocked (24h)',
+      width: '120px',
+      render: (row: ResourceItem) => (
+        <span className={`font-mono text-xs font-semibold ${row.blocked_attempts_24h > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+          {row.blocked_attempts_24h}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Database size={18} className="text-amber-400" />
-            Resources
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">Sensitive resources with access control, taint levels, and access history</p>
-        </div>
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Protected Resources"
+        subtitle="Catalog of protected data sinks, databases, APIs, and sensitivity classifications"
+        badge="Asset Inventory"
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Total Resources" value={DEMO_RESOURCES.length} />
+        <MetricCard label="Critical Sensitivity" value={criticalCount} status={criticalCount > 0 ? 'BLOCK' : 'ALLOW'} />
+        <MetricCard label="Blocked Attempts (24h)" value={totalBlocked} status={totalBlocked > 0 ? 'BLOCK' : 'ALLOW'} />
+        <MetricCard label="Access Events (24h)" value={totalAccesses} status="ALLOW" />
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-xl border border-zinc-700/30 bg-zinc-800/40 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Resources</div>
-          <div className="text-xl font-bold font-mono text-zinc-200">{DEMO_RESOURCES.length}</div>
-        </div>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Critical</div>
-          <div className="text-xl font-bold font-mono text-red-400">{DEMO_RESOURCES.filter(r => r.sensitivity === 'CRITICAL').length}</div>
-        </div>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Blocked Attempts (24h)</div>
-          <div className="text-xl font-bold font-mono text-red-400">{DEMO_RESOURCES.reduce((s, r) => s + r.blocked_attempts_24h, 0)}</div>
-        </div>
-        <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Access Events (24h)</div>
-          <div className="text-xl font-bold font-mono text-sky-400">{DEMO_RESOURCES.reduce((s, r) => s + r.access_count_24h, 0)}</div>
-        </div>
+      {/* Table & Filter */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search resources by name, ID, or description..."
+          filters={[
+            {
+              key: 'sensitivity',
+              label: 'Sensitivity',
+              options: [
+                { label: 'All Levels', value: 'ALL' },
+                { label: 'Critical', value: 'CRITICAL' },
+                { label: 'High', value: 'HIGH' },
+                { label: 'Medium', value: 'MEDIUM' },
+                { label: 'Low', value: 'LOW' },
+              ],
+              value: sensitFilter,
+              onChange: setSensitFilter,
+            },
+          ]}
+          activeCount={sensitFilter !== 'ALL' || search ? 1 : 0}
+          onReset={() => {
+            setSearch('');
+            setSensitFilter('ALL');
+          }}
+        />
+
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="resource_id"
+          onRowClick={(row) => setSelectedResource(row)}
+          emptyMessage="No resources matched your search criteria."
+        />
       </div>
 
-      {/* Search + Filter */}
-      <div className="flex gap-3 items-center">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search resources..."
-            className="w-full pl-8 pr-3 py-2 bg-zinc-800/60 border border-zinc-700/50 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/50"
-          />
-        </div>
-        {['all', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(f => (
-          <button key={f} onClick={() => setSensitFilter(f)}
-            className={`px-2.5 py-1 text-[11px] rounded font-medium uppercase tracking-wider transition-colors ${
-              sensitFilter === f ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'
-            }`}>
-            {f}
-          </button>
-        ))}
-      </div>
+      {/* Resource Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedResource}
+        onClose={() => setSelectedResource(null)}
+        title={selectedResource ? selectedResource.name : ''}
+        subtitle={selectedResource ? selectedResource.resource_id : ''}
+        badge={selectedResource ? (
+          <span className={`text-xs px-2 py-0.5 rounded border ${SENSITIVITY_CLASSES[selectedResource.sensitivity]}`}>
+            {selectedResource.sensitivity}
+          </span>
+        ) : null}
+      >
+        {selectedResource && (
+          <div className="space-y-6">
+            {/* Overview */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Description & Classification</div>
+              <p className="text-xs text-slate-800 leading-relaxed">{selectedResource.description}</p>
+            </div>
 
-      {/* Resource Cards */}
-      <div className="space-y-3">
-        {filtered.map(res => {
-          const TypeIcon = TYPE_ICONS[res.type] || Database;
-          const sensitStyle = SENSITIVITY_STYLES[res.sensitivity] || '';
-          return (
-            <div key={res.resource_id} className={`rounded-xl border ${res.blocked_attempts_24h > 0 ? 'border-red-500/30 bg-red-500/5' : 'border-zinc-800/50 bg-zinc-900/30'} p-4`}>
-              <div className="flex items-start gap-3">
-                <TypeIcon size={16} className="text-zinc-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-mono text-sm text-zinc-100">{res.name}</span>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${sensitStyle}`}>
-                      {res.sensitivity}
-                    </span>
-                    <span className="text-[10px] text-zinc-600 bg-zinc-800/60 px-1.5 py-0.5 rounded">{res.type.replace('_', ' ')}</span>
-                    {res.requires_hitl && (
-                      <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">HITL Required</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-zinc-500 mb-2">{res.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1"><Eye size={11} /> {res.access_count_24h} accesses (24h)</span>
-                    {res.blocked_attempts_24h > 0 && (
-                      <span className="flex items-center gap-1 text-red-400"><AlertTriangle size={11} /> {res.blocked_attempts_24h} blocked</span>
-                    )}
-                    <span>Taint: <span className={res.taint_level === 'HIGH' ? 'text-red-400' : res.taint_level === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'}>{res.taint_level}</span></span>
-                  </div>
-                  {res.agents_with_access.length > 0 && (
-                    <div className="flex gap-1.5 mt-2 flex-wrap">
-                      <span className="text-[10px] text-zinc-600">Agents:</span>
-                      {res.agents_with_access.map(a => (
-                        <span key={a} className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/60 text-zinc-400">{a}</span>
-                      ))}
-                    </div>
-                  )}
-                  {res.agents_with_access.length === 0 && (
-                    <div className="flex items-center gap-1 mt-1 text-[11px] text-emerald-400">
-                      <Lock size={10} /> No agents have access
-                    </div>
-                  )}
+            {/* Security Profile */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Security Attributes</div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                  <span className="text-slate-500 block mb-1">Taint Classification</span>
+                  <span className={`font-mono font-semibold ${
+                    selectedResource.taint_level === 'HIGH' ? 'text-red-700' : selectedResource.taint_level === 'MEDIUM' ? 'text-amber-700' : 'text-emerald-700'
+                  }`}>
+                    {selectedResource.taint_level} TAINT
+                  </span>
+                </div>
+                <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                  <span className="text-slate-500 block mb-1">Human-in-the-Loop</span>
+                  <span className="font-semibold text-slate-800">
+                    {selectedResource.requires_hitl ? 'Mandatory HITL Gate' : 'Automated Policy Check'}
+                  </span>
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
+
+            {/* Authorized Agents */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Authorized Agents</div>
+              {selectedResource.agents_with_access.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedResource.agents_with_access.map(agent => (
+                    <span key={agent} className="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">
+                      {agent}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-2 text-xs text-slate-600">
+                  <Lock size={14} className="text-slate-500" />
+                  <span>No agents currently have persistent access to this resource (Zero Trust quarantine).</span>
+                </div>
+              )}
+            </div>
+
+            {/* Access telemetry */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">24-Hour Telemetry</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                  <div className="text-[10px] text-slate-500 uppercase">Access Events</div>
+                  <div className="text-lg font-bold font-mono text-slate-800">{selectedResource.access_count_24h}</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                  <div className="text-[10px] text-slate-500 uppercase">Blocked Invocations</div>
+                  <div className={`text-lg font-bold font-mono ${selectedResource.blocked_attempts_24h > 0 ? 'text-red-700' : 'text-slate-800'}`}>
+                    {selectedResource.blocked_attempts_24h}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

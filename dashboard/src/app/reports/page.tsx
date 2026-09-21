@@ -1,9 +1,26 @@
 'use client';
 
-import { Map, Download, FileText, Shield, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
-import Link from 'next/link';
+import { useState } from 'react';
+import { Download, FileText, Shield, CheckCircle2, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
-const REPORTS = [
+interface ReportItem {
+  report_id: string;
+  title: string;
+  type: 'OFFENSIVE' | 'POSTURE' | 'FORENSICS' | 'COMPLIANCE';
+  generated_at: string;
+  format: string;
+  path: string;
+  summary: string;
+  status: 'READY' | 'GENERATING';
+}
+
+const REPORTS: ReportItem[] = [
   {
     report_id: 'rpt_phase5_adaptive',
     title: 'Phase 5 Adaptive Campaign Scorecard',
@@ -56,77 +73,174 @@ const REPORTS = [
   },
 ];
 
-const TYPE_STYLES: Record<string, string> = {
-  OFFENSIVE: 'text-red-400 border-red-500/20 bg-red-500/10',
-  POSTURE: 'text-sky-400 border-sky-500/20 bg-sky-500/10',
-  FORENSICS: 'text-purple-400 border-purple-500/20 bg-purple-500/10',
-  COMPLIANCE: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10',
+const TYPE_BADGES: Record<string, string> = {
+  OFFENSIVE: 'bg-red-50 text-red-700 border-red-200',
+  POSTURE: 'bg-blue-50 text-blue-700 border-blue-200',
+  FORENSICS: 'bg-purple-50 text-purple-700 border-purple-200',
+  COMPLIANCE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
 export default function ReportsPage() {
-  return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Map size={18} className="text-sky-400" />
-            Reports
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">Generated security reports — offensive campaigns, posture, forensics, and compliance</p>
-        </div>
-      </div>
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
-      {/* Summary */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Total Reports', value: REPORTS.length.toString(), color: 'text-zinc-200', border: 'border-zinc-700/30', bg: 'bg-zinc-800/40' },
-          { label: 'Offensive', value: REPORTS.filter(r => r.type === 'OFFENSIVE').length.toString(), color: 'text-red-400', border: 'border-red-500/20', bg: 'bg-red-500/5' },
-          { label: 'Forensics', value: REPORTS.filter(r => r.type === 'FORENSICS').length.toString(), color: 'text-purple-400', border: 'border-purple-500/20', bg: 'bg-purple-500/5' },
-          { label: 'Compliance', value: REPORTS.filter(r => r.type === 'COMPLIANCE').length.toString(), color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
-        ].map(s => (
-          <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} p-3 text-center`}>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">{s.label}</div>
-            <div className={`text-xl font-bold font-mono ${s.color}`}>{s.value}</div>
+  const filtered = REPORTS.filter(r => {
+    const matchSearch =
+      r.title.toLowerCase().includes(search.toLowerCase()) ||
+      r.summary.toLowerCase().includes(search.toLowerCase()) ||
+      r.report_id.toLowerCase().includes(search.toLowerCase());
+
+    const matchType = typeFilter === 'ALL' || r.type === typeFilter;
+
+    return matchSearch && matchType;
+  });
+
+  const columns = [
+    {
+      key: 'title',
+      header: 'Report Title',
+      render: (row: ReportItem) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200">
+            <FileText size={13} />
           </div>
-        ))}
+          <div>
+            <div className="font-semibold text-xs text-slate-900">{row.title}</div>
+            <div className="text-[11px] font-mono text-slate-500">{row.path}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Category',
+      width: '130px',
+      render: (row: ReportItem) => (
+        <span className={`text-[11px] font-mono px-2 py-0.5 rounded border ${TYPE_BADGES[row.type]}`}>
+          {row.type}
+        </span>
+      ),
+    },
+    {
+      key: 'format',
+      header: 'Format',
+      width: '120px',
+      render: (row: ReportItem) => (
+        <span className="text-xs text-slate-600 font-mono bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+          {row.format}
+        </span>
+      ),
+    },
+    {
+      key: 'generated_at',
+      header: 'Generated',
+      width: '140px',
+      render: (row: ReportItem) => (
+        <span className="text-xs text-slate-500">{new Date(row.generated_at).toLocaleDateString()}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: '100px',
+      render: (row: ReportItem) => (
+        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+          {row.status}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Security Reports & Artifacts"
+        subtitle="Downloadable compliance audits, offensive campaign summaries, and forensic investigation exports"
+        badge="Audit & Compliance"
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Total Reports" value={REPORTS.length} />
+        <MetricCard label="Offensive Scorecards" value={REPORTS.filter(r => r.type === 'OFFENSIVE').length} status="ALLOW" />
+        <MetricCard label="Forensic Exports" value={REPORTS.filter(r => r.type === 'FORENSICS').length} status="ALLOW" />
+        <MetricCard label="Compliance Audits" value={REPORTS.filter(r => r.type === 'COMPLIANCE').length} status="ALLOW" />
       </div>
 
-      {/* Report List */}
-      <div className="space-y-3">
-        {REPORTS.map(report => (
-          <div key={report.report_id} className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4 hover:border-zinc-700/50 transition-colors">
-            <div className="flex items-start gap-3">
-              <FileText size={16} className="text-zinc-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-semibold text-sm text-zinc-200">{report.title}</span>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${TYPE_STYLES[report.type] || ''}`}>{report.type}</span>
-                  <span className="text-[10px] text-zinc-600 bg-zinc-800/60 px-1.5 py-0.5 rounded">{report.format}</span>
-                  <span className="flex items-center gap-1 text-[10px] text-emerald-400"><CheckCircle2 size={9} /> {report.status}</span>
-                </div>
-                <p className="text-xs text-zinc-500 mb-2">{report.summary}</p>
-                <div className="flex items-center gap-4 text-[10px] text-zinc-600">
-                  <span className="font-mono">{report.path}</span>
-                  <span className="ml-auto">{new Date(report.generated_at).toLocaleString()}</span>
-                </div>
+      {/* Filter and Table */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search reports by title or path..."
+          filters={[
+            {
+              key: 'type',
+              label: 'Category',
+              options: [
+                { label: 'All Categories', value: 'ALL' },
+                { label: 'Offensive', value: 'OFFENSIVE' },
+                { label: 'Posture', value: 'POSTURE' },
+                { label: 'Forensics', value: 'FORENSICS' },
+                { label: 'Compliance', value: 'COMPLIANCE' },
+              ],
+              value: typeFilter,
+              onChange: setTypeFilter,
+            },
+          ]}
+          activeCount={typeFilter !== 'ALL' || search ? 1 : 0}
+          onReset={() => {
+            setSearch('');
+            setTypeFilter('ALL');
+          }}
+        />
+
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="report_id"
+          onRowClick={(row) => setSelectedReport(row)}
+          emptyMessage="No reports matched your search criteria."
+        />
+      </div>
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedReport}
+        onClose={() => setSelectedReport(null)}
+        title={selectedReport ? selectedReport.title : ''}
+        subtitle={selectedReport ? `ID: ${selectedReport.report_id} • ${selectedReport.format}` : ''}
+        badge={selectedReport ? (
+          <span className={`text-xs px-2 py-0.5 rounded border ${TYPE_BADGES[selectedReport.type]}`}>
+            {selectedReport.type}
+          </span>
+        ) : null}
+      >
+        {selectedReport && (
+          <div className="space-y-6">
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Executive Summary</div>
+              <p className="text-xs text-slate-800 leading-relaxed">{selectedReport.summary}</p>
+            </div>
+
+            <div className="space-y-2 text-xs text-slate-600">
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Filesystem Location</span>
+                <span className="font-mono text-slate-900">{selectedReport.path}</span>
               </div>
-              <button className="flex-shrink-0 flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 transition-colors px-2 py-1 rounded border border-sky-500/20 hover:border-sky-500/40">
-                <Download size={11} />
-                Download
-              </button>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Generated At</span>
+                <span className="font-mono">{new Date(selectedReport.generated_at).toUTCString()}</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-500">Artifact Status</span>
+                <span className="font-semibold text-emerald-700">{selectedReport.status}</span>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* CLI note */}
-      <div className="rounded-xl border border-zinc-800/50 bg-black/40 p-3">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Generate Reports via CLI</div>
-        <div className="font-mono text-[11px] space-y-1">
-          <div className="text-emerald-400">python -m agentguard attack report</div>
-          <div className="text-sky-400">python examples/phase5/adaptive_offensive_campaign.py</div>
-        </div>
-      </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

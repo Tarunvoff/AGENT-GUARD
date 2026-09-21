@@ -1,7 +1,14 @@
 'use client';
 
-import { Brain, Shield, AlertTriangle, CheckCircle2, TrendingUp, Zap, Activity } from 'lucide-react';
+import { useState } from 'react';
+import { Brain, Shield, AlertTriangle, CheckCircle2, Zap, Activity, Info, BarChart2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
 const THREAT_TIMELINE = [
   { time: '08:00', threat: 0.12, confidence: 0.95 },
@@ -15,15 +22,28 @@ const THREAT_TIMELINE = [
 ];
 
 const THREAT_DIMENSIONS = [
-  { dimension: 'Prompt Injection', score: 87 },
+  { dimension: 'Prompt Inj.', score: 87 },
   { dimension: 'Data Exfil', score: 73 },
-  { dimension: 'Auth Escalation', score: 91 },
-  { dimension: 'Tool Poisoning', score: 65 },
-  { dimension: 'Taint Propagation', score: 78 },
-  { dimension: 'Intent Mismatch', score: 84 },
+  { dimension: 'Auth Esc.', score: 91 },
+  { dimension: 'Tool Poison', score: 65 },
+  { dimension: 'Taint Leak', score: 78 },
+  { dimension: 'Intent Drift', score: 84 },
 ];
 
-const RECENT_AI_ANALYSES = [
+interface AiAnalysis {
+  id: string;
+  event_id: string;
+  timestamp: string;
+  intent_aligned: boolean;
+  threat_severity: number;
+  threat_category: string | null;
+  confidence: number;
+  reasoning: string;
+  policy_overridden: boolean;
+  final_decision: 'BLOCK' | 'HITL' | 'ALLOW';
+}
+
+const RECENT_AI_ANALYSES: AiAnalysis[] = [
   {
     id: 'ai_001',
     event_id: 'evt_pinj_001',
@@ -63,130 +83,185 @@ const RECENT_AI_ANALYSES = [
 ];
 
 export default function AiSecuraPage() {
+  const [search, setSearch] = useState('');
+  const [selectedAnalysis, setSelectedAnalysis] = useState<AiAnalysis | null>(null);
+
+  const filtered = RECENT_AI_ANALYSES.filter(a =>
+    a.id.toLowerCase().includes(search.toLowerCase()) ||
+    a.event_id.toLowerCase().includes(search.toLowerCase()) ||
+    a.reasoning.toLowerCase().includes(search.toLowerCase()) ||
+    (a.threat_category && a.threat_category.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const columns = [
+    {
+      key: 'id',
+      header: 'Analysis ID',
+      render: (row: AiAnalysis) => (
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-purple-50 flex items-center justify-center text-purple-700 border border-purple-200">
+            <Brain size={12} />
+          </div>
+          <div>
+            <div className="font-mono text-xs font-semibold text-slate-900">{row.id}</div>
+            <div className="font-mono text-[10px] text-slate-500">{row.event_id}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'threat_category',
+      header: 'Threat Category',
+      render: (row: AiAnalysis) => (
+        <span className="text-xs font-mono text-slate-700 capitalize">
+          {row.threat_category ? row.threat_category.replace(/_/g, ' ') : 'None (Benign)'}
+        </span>
+      ),
+    },
+    {
+      key: 'threat_severity',
+      header: 'Threat Index',
+      width: '120px',
+      render: (row: AiAnalysis) => (
+        <div className="flex items-center gap-2">
+          <div className="w-10 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+            <div
+              className={`h-full ${row.threat_severity > 0.7 ? 'bg-red-500' : 'bg-emerald-500'}`}
+              style={{ width: `${row.threat_severity * 100}%` }}
+            />
+          </div>
+          <span className="font-mono text-xs text-slate-700">{row.threat_severity.toFixed(2)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'confidence',
+      header: 'Confidence',
+      width: '100px',
+      render: (row: AiAnalysis) => (
+        <span className="font-mono text-xs text-slate-600">{`${(row.confidence * 100).toFixed(0)}%`}</span>
+      ),
+    },
+    {
+      key: 'final_decision',
+      header: 'Policy Verdict',
+      width: '120px',
+      render: (row: AiAnalysis) => (
+        <StatusBadge status={row.final_decision} />
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Brain size={18} className="text-purple-400" />
-            AI Secura
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            AI-powered threat reasoning — advises enforcement. Deterministic policy always has final authority.
-          </p>
-        </div>
-        <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 text-xs text-purple-400 flex items-center gap-1.5">
-          <Activity size={11} className="animate-pulse" />
-          LOCAL MODEL ACTIVE
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="AI Secura Reasoning"
+        subtitle="Advisory semantic intent alignment and threat analysis. Deterministic policy maintains absolute enforcement authority"
+        badge="Semantic Engine"
+        actions={
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-purple-50 border border-purple-200 text-xs text-purple-800 font-medium">
+            <Activity size={13} className="text-purple-600" />
+            <span>Local Reasoning Model Active</span>
+          </div>
+        }
+      />
+
+      {/* Principle Callout */}
+      <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3.5 flex items-start gap-3">
+        <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+        <div className="text-xs text-amber-900 leading-relaxed">
+          <span className="font-semibold">Architectural Invariant (AI Reasons, Policy Enforces):</span> AI Secura provides intent alignment signals, threat categorization, and anomaly scoring. All enforcement decisions are executed exclusively by the deterministic PolicyEvaluator. AI outputs can never override deterministic block rules.
         </div>
       </div>
 
-      {/* Key Principle */}
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
-        <AlertTriangle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
-        <div className="text-xs text-amber-300">
-          <span className="font-semibold">AI Reasons — Policy Enforces:</span> AI Secura provides intent alignment analysis, threat severity scoring, and threat categorization.
-          The <span className="font-semibold">deterministic PolicyEvaluator</span> makes the final ALLOW/HITL/BLOCK decision. AI output cannot override policy.
-          If AI is unavailable, the system fail-safe blocks tainted actions.
-        </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Analyses (24h)" value={47} />
+        <MetricCard label="High Threat Alerts" value={3} status="BLOCK" />
+        <MetricCard label="Mean Confidence" value="94.2%" status="ALLOW" />
+        <MetricCard label="Policy Overrides" value="0 (Zero AI Override)" status="ALLOW" />
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Analyses (24h)</div>
-          <div className="text-2xl font-bold font-mono text-purple-400">47</div>
-        </div>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">High Threat</div>
-          <div className="text-2xl font-bold font-mono text-red-400">4</div>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Avg Confidence</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">93.4%</div>
-        </div>
-        <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Intent Aligned</div>
-          <div className="text-2xl font-bold font-mono text-sky-400">43 / 47</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        {/* Threat Timeline */}
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-3">Threat Severity Timeline (Today)</div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={THREAT_TIMELINE} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-              <defs>
-                <linearGradient id="threatGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="time" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 10 }} />
-              <YAxis stroke="#374151" tick={{ fill: '#6b7280', fontSize: 10 }} domain={[0, 1]} />
-              <Tooltip contentStyle={{ background: '#0c1119', border: '1px solid #1f2937', borderRadius: 8, fontSize: 11 }} />
-              <Area type="monotone" dataKey="threat" stroke="#ef4444" fill="url(#threatGrad)" strokeWidth={2} dot={{ fill: '#ef4444', r: 3 }} />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Visual Analytics Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Threat Severity Timeline</div>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={THREAT_TIMELINE} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} />
+                <YAxis stroke="#94a3b8" fontSize={11} />
+                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '6px', fontSize: '11px' }} />
+                <Area type="monotone" dataKey="threat" stroke="#dc2626" fill="#fee2e2" name="Threat Score" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Threat Dimensions */}
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-3">Threat Category Scores</div>
-          <div className="space-y-2">
-            {THREAT_DIMENSIONS.map(d => (
-              <div key={d.dimension} className="flex items-center gap-3">
-                <span className="text-[11px] text-zinc-400 w-32 truncate">{d.dimension}</span>
-                <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${d.score > 80 ? 'bg-red-500' : d.score > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                    style={{ width: `${d.score}%` }}
-                  />
-                </div>
-                <span className={`text-[11px] font-mono font-bold w-8 text-right ${d.score > 80 ? 'text-red-400' : d.score > 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {d.score}
-                </span>
-              </div>
-            ))}
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Threat Dimension Coverage</div>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={THREAT_DIMENSIONS} margin={{ top: 10, right: 20, left: 20, bottom: 10 }}>
+                <PolarGrid stroke="#e2e8f0" />
+                <PolarAngleAxis dataKey="dimension" stroke="#64748b" fontSize={10} />
+                <Radar name="Severity Index" dataKey="score" stroke="#8b5cf6" fill="#c4b5fd" fillOpacity={0.3} />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Recent Analyses */}
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-3">Recent AI Analyses</div>
-        <div className="space-y-3">
-          {RECENT_AI_ANALYSES.map(a => (
-            <div key={a.id} className={`rounded-xl border p-4 ${a.intent_aligned ? 'border-zinc-800/50 bg-zinc-900/30' : 'border-red-500/30 bg-red-500/5'}`}>
-              <div className="flex items-start gap-3">
-                {a.intent_aligned
-                  ? <CheckCircle2 size={15} className="text-emerald-400 mt-0.5 flex-shrink-0" />
-                  : <AlertTriangle size={15} className="text-red-400 mt-0.5 flex-shrink-0" />
-                }
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-mono text-[10px] text-zinc-500">{a.event_id}</span>
-                    {a.threat_category && (
-                      <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">{a.threat_category}</span>
-                    )}
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                      a.final_decision === 'BLOCK' ? 'text-red-400 border-red-500/30 bg-red-500/10' : 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
-                    }`}>{a.final_decision}</span>
-                  </div>
-                  <p className="text-xs text-zinc-400 mb-2">{a.reasoning}</p>
-                  <div className="flex items-center gap-4 text-[10px] text-zinc-600">
-                    <span>Threat: <span className={a.threat_severity > 0.5 ? 'text-red-400 font-bold' : 'text-emerald-400'}>{(a.threat_severity * 100).toFixed(0)}%</span></span>
-                    <span>Confidence: <span className="text-zinc-300">{(a.confidence * 100).toFixed(0)}%</span></span>
-                    <span className="font-mono">{new Date(a.timestamp).toLocaleTimeString()}</span>
-                  </div>
-                </div>
+      {/* Analyses Table */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search AI reasoning traces..."
+        />
+
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="id"
+          onRowClick={(row) => setSelectedAnalysis(row)}
+          emptyMessage="No AI analysis records matched your filter."
+        />
+      </div>
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedAnalysis}
+        onClose={() => setSelectedAnalysis(null)}
+        title={selectedAnalysis ? `Analysis: ${selectedAnalysis.id}` : ''}
+        subtitle={selectedAnalysis ? `Event Ref: ${selectedAnalysis.event_id}` : ''}
+        badge={selectedAnalysis ? <StatusBadge status={selectedAnalysis.final_decision} /> : null}
+      >
+        {selectedAnalysis && (
+          <div className="space-y-6">
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Semantic Reasoning Output</div>
+              <p className="text-xs text-slate-800 leading-relaxed">{selectedAnalysis.reasoning}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                <span className="text-slate-500 block mb-1">Threat Category</span>
+                <span className="font-mono font-semibold text-slate-800 capitalize">
+                  {selectedAnalysis.threat_category || 'None'}
+                </span>
+              </div>
+              <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                <span className="text-slate-500 block mb-1">Intent Alignment</span>
+                <span className={`font-semibold ${selectedAnalysis.intent_aligned ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {selectedAnalysis.intent_aligned ? 'Aligned with Goal' : 'Intent Divergence Detected'}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

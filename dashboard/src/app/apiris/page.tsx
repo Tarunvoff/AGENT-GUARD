@@ -1,17 +1,35 @@
 'use client';
 
-import { Zap, AlertTriangle, CheckCircle2, TrendingUp, Activity, Shield, ExternalLink } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis } from 'recharts';
+import { useState } from 'react';
+import { Zap, AlertTriangle, CheckCircle2, Shield, Activity, Filter, BarChart2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
 const APIRIS_RISK_DISTRIBUTION = [
-  { range: '0.0-0.2', count: 12, label: 'Safe' },
-  { range: '0.2-0.4', count: 8, label: 'Low' },
-  { range: '0.4-0.6', count: 5, label: 'Medium' },
-  { range: '0.6-0.8', count: 3, label: 'High' },
-  { range: '0.8-1.0', count: 4, label: 'Critical' },
+  { range: '0.0 - 0.2', count: 12, label: 'Safe' },
+  { range: '0.2 - 0.4', count: 8, label: 'Low' },
+  { range: '0.4 - 0.6', count: 5, label: 'Medium' },
+  { range: '0.6 - 0.8', count: 3, label: 'High' },
+  { range: '0.8 - 1.0', count: 4, label: 'Critical' },
 ];
 
-const APIRIS_SIGNALS = [
+interface ApirisSignal {
+  signal_id: string;
+  tool: string;
+  signal_type: string;
+  score: number;
+  anomaly_flags: string[];
+  timestamp: string;
+  action_taken: 'BLOCK' | 'HITL' | 'ALLOW';
+  description: string;
+}
+
+const APIRIS_SIGNALS: ApirisSignal[] = [
   {
     signal_id: 'sig_001',
     tool: 'external_mcp_tool',
@@ -64,119 +82,200 @@ const APIRIS_SIGNALS = [
   },
 ];
 
-const SCORE_COLOR = (s: number) => s > 0.8 ? 'text-red-400' : s > 0.6 ? 'text-orange-400' : s > 0.4 ? 'text-amber-400' : 'text-emerald-400';
-const SCORE_BG = (s: number) => s > 0.8 ? 'bg-red-500' : s > 0.6 ? 'bg-orange-500' : s > 0.4 ? 'bg-amber-500' : 'bg-emerald-500';
-
 export default function ApirisPage() {
-  return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Zap size={18} className="text-yellow-400" />
-            APIRIS
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            API Risk Intelligence System — real-time anomaly detection on all tool and API calls
-          </p>
-        </div>
-        <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 text-xs text-yellow-400 flex items-center gap-1.5">
-          <Activity size={11} className="animate-pulse" />
-          ANALYZING
-        </div>
-      </div>
+  const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('ALL');
+  const [selectedSignal, setSelectedSignal] = useState<ApirisSignal | null>(null);
 
-      {/* Architecture note */}
-      <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 flex items-start gap-2">
-        <Shield size={14} className="text-sky-400 mt-0.5 flex-shrink-0" />
-        <div className="text-xs text-sky-300">
-          <span className="font-semibold">APIRIS Pipeline:</span> Every tool/API call is scored before execution.
-          Scores ≥ 0.8 trigger immediate BLOCK. Scores 0.5–0.8 escalate to AI Secura for intent analysis.
-          All scores feed deterministic PolicyEvaluator.
-        </div>
-      </div>
+  const criticalCount = APIRIS_SIGNALS.filter(s => s.score >= 0.8).length;
+  const avgScore = (APIRIS_SIGNALS.reduce((s, a) => s + a.score, 0) / APIRIS_SIGNALS.length).toFixed(2);
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Calls Analyzed</div>
-          <div className="text-2xl font-bold font-mono text-yellow-400">47</div>
-        </div>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Critical Signals</div>
-          <div className="text-2xl font-bold font-mono text-red-400">3</div>
-        </div>
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Avg Score</div>
-          <div className="text-2xl font-bold font-mono text-amber-400">0.47</div>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">APIRIS Unavailable</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">0</div>
-        </div>
-      </div>
+  const filtered = APIRIS_SIGNALS.filter(s => {
+    const matchSearch =
+      s.signal_id.toLowerCase().includes(search.toLowerCase()) ||
+      s.tool.toLowerCase().includes(search.toLowerCase()) ||
+      s.description.toLowerCase().includes(search.toLowerCase()) ||
+      s.signal_type.toLowerCase().includes(search.toLowerCase());
 
-      {/* Risk Distribution */}
-      <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-3">Risk Score Distribution</div>
-        <ResponsiveContainer width="100%" height={160}>
-          <BarChart data={APIRIS_RISK_DISTRIBUTION} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-            <XAxis dataKey="range" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 10 }} />
-            <YAxis stroke="#374151" tick={{ fill: '#6b7280', fontSize: 10 }} />
-            <Tooltip contentStyle={{ background: '#0c1119', border: '1px solid #1f2937', borderRadius: 8, fontSize: 11 }} />
-            <Bar dataKey="count" fill="#60a5fa" radius={[4, 4, 0, 0]}
-              label={false}
-              // Color by risk range
-              isAnimationActive={false}
+    const matchAction = actionFilter === 'ALL' || s.action_taken === actionFilter;
+
+    return matchSearch && matchAction;
+  });
+
+  const columns = [
+    {
+      key: 'signal_id',
+      header: 'Signal & Tool',
+      render: (row: ApirisSignal) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded bg-amber-50 flex items-center justify-center text-amber-700 border border-amber-200">
+            <Zap size={13} />
+          </div>
+          <div>
+            <div className="font-mono text-xs font-semibold text-slate-900">{row.tool}</div>
+            <div className="font-mono text-[10px] text-slate-500">{row.signal_id}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'signal_type',
+      header: 'Signal Type',
+      width: '180px',
+      render: (row: ApirisSignal) => (
+        <span className="text-xs font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+          {row.signal_type}
+        </span>
+      ),
+    },
+    {
+      key: 'score',
+      header: 'APIRIS Risk Index',
+      width: '140px',
+      render: (row: ApirisSignal) => (
+        <div className="flex items-center gap-2">
+          <div className="w-12 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+            <div
+              className={`h-full ${row.score > 0.8 ? 'bg-red-500' : row.score > 0.5 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              style={{ width: `${row.score * 100}%` }}
             />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+          </div>
+          <span className="font-mono text-xs font-semibold text-slate-800">{row.score.toFixed(2)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'action_taken',
+      header: 'Action Intercept',
+      width: '130px',
+      render: (row: ApirisSignal) => (
+        <StatusBadge status={row.action_taken} />
+      ),
+    },
+    {
+      key: 'timestamp',
+      header: 'Timestamp',
+      width: '120px',
+      render: (row: ApirisSignal) => (
+        <span className="text-xs text-slate-500">{new Date(row.timestamp).toLocaleTimeString()}</span>
+      ),
+    },
+  ];
 
-      {/* Signals */}
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-3">Recent APIRIS Signals</div>
-        <div className="space-y-3">
-          {APIRIS_SIGNALS.map(sig => (
-            <div key={sig.signal_id} className={`rounded-xl border p-4 ${sig.score > 0.8 ? 'border-red-500/30 bg-red-500/5' : sig.score > 0.5 ? 'border-amber-500/20 bg-amber-500/5' : 'border-zinc-800/50 bg-zinc-900/30'}`}>
-              <div className="flex items-start gap-3">
-                <Zap size={15} className={`${SCORE_COLOR(sig.score)} mt-0.5 flex-shrink-0`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-mono text-xs text-zinc-300">{sig.tool}</span>
-                    <span className="text-[10px] text-zinc-500 bg-zinc-800/60 px-1.5 py-0.5 rounded">{sig.signal_type}</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                      sig.action_taken === 'BLOCK' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
-                      sig.action_taken === 'HITL' ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
-                      'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
-                    }`}>{sig.action_taken}</span>
-                  </div>
-                  <p className="text-xs text-zinc-500 mb-2">{sig.description}</p>
+  return (
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="APIRIS Risk Intelligence"
+        subtitle="Real-time structural anomaly scoring, schema inspection, and payload risk quantification for all API and tool calls"
+        badge="Payload Scoring"
+      />
 
-                  {/* Risk score bar */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] text-zinc-600">Risk</span>
-                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${SCORE_BG(sig.score)}`} style={{ width: `${sig.score * 100}%` }} />
-                    </div>
-                    <span className={`text-[11px] font-mono font-bold ${SCORE_COLOR(sig.score)}`}>{sig.score.toFixed(2)}</span>
-                  </div>
-
-                  {sig.anomaly_flags.length > 0 && (
-                    <div className="flex gap-1.5 flex-wrap">
-                      {sig.anomaly_flags.map(f => (
-                        <span key={f} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-mono">{f}</span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="text-[10px] text-zinc-600 font-mono mt-1.5">{new Date(sig.timestamp).toLocaleTimeString()}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Architecture Pipeline Banner */}
+      <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3.5 flex items-start gap-3">
+        <Shield size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="text-xs text-blue-900 leading-relaxed">
+          <span className="font-semibold">APIRIS Pipeline:</span> Invocations with APIRIS score ≥ 0.80 trigger an immediate deterministic BLOCK. Scores between 0.50–0.79 route to HITL evaluation. Scores feed directly into runtime policy validation.
         </div>
       </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Total Signals (24h)" value={APIRIS_SIGNALS.length} />
+        <MetricCard label="Critical Risk (≥ 0.80)" value={criticalCount} status="BLOCK" />
+        <MetricCard label="Mean Risk Score" value={avgScore} />
+        <MetricCard label="Blocked Invocations" value={3} status="BLOCK" />
+      </div>
+
+      {/* Distribution Chart */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">APIRIS Risk Score Distribution</div>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={APIRIS_RISK_DISTRIBUTION} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="range" stroke="#94a3b8" fontSize={11} />
+              <YAxis stroke="#94a3b8" fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '6px', fontSize: '11px' }} />
+              <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} name="Invocations" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Signals Table */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search APIRIS signals by tool, type, or description..."
+          filters={[
+            {
+              key: 'action',
+              label: 'Action',
+              options: [
+                { label: 'All Actions', value: 'ALL' },
+                { label: 'Block', value: 'BLOCK' },
+                { label: 'HITL', value: 'HITL' },
+                { label: 'Allow', value: 'ALLOW' },
+              ],
+              value: actionFilter,
+              onChange: setActionFilter,
+            },
+          ]}
+          activeCount={actionFilter !== 'ALL' || search ? 1 : 0}
+          onReset={() => {
+            setSearch('');
+            setActionFilter('ALL');
+          }}
+        />
+
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="signal_id"
+          onRowClick={(row) => setSelectedSignal(row)}
+          emptyMessage="No APIRIS signals matched your search criteria."
+        />
+      </div>
+
+      {/* Signal Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedSignal}
+        onClose={() => setSelectedSignal(null)}
+        title={selectedSignal ? `Signal: ${selectedSignal.signal_id}` : ''}
+        subtitle={selectedSignal ? `Tool: ${selectedSignal.tool} • Risk Score: ${selectedSignal.score.toFixed(2)}` : ''}
+        badge={selectedSignal ? <StatusBadge status={selectedSignal.action_taken} /> : null}
+      >
+        {selectedSignal && (
+          <div className="space-y-6">
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Anomaly Diagnostics</div>
+              <p className="text-xs text-slate-800 leading-relaxed">{selectedSignal.description}</p>
+            </div>
+
+            {/* Anomaly Flags */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Detected Anomaly Flags</div>
+              {selectedSignal.anomaly_flags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedSignal.anomaly_flags.map(flag => (
+                    <span key={flag} className="font-mono text-xs px-2 py-0.5 rounded bg-red-50 text-red-800 border border-red-200 font-semibold">
+                      ⚠ {flag}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-slate-500 italic">No anomaly flags triggered</span>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 pt-4 text-xs text-slate-600 flex justify-between">
+              <span className="text-slate-500">Evaluated Timestamp</span>
+              <span className="font-mono">{new Date(selectedSignal.timestamp).toUTCString()}</span>
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

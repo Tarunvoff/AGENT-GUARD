@@ -1,113 +1,237 @@
 'use client';
 
+import { useState } from 'react';
 import { DEMO_REGRESSIONS } from '@/data/demo';
-import { DecisionBadge, SectionHeader, EmptyState } from '@/components/ui/security';
-import { RotateCcw, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
+import { RotateCcw, CheckCircle2, XCircle, ArrowRight, ShieldCheck, History } from 'lucide-react';
+
+interface RegressionItem {
+  regression_id: string;
+  attack_id: string;
+  attack_type: string;
+  secured: boolean;
+  expected_decision: 'BLOCK' | 'HITL' | 'ALLOW' | string;
+  observed_decision: 'BLOCK' | 'HITL' | 'ALLOW' | string;
+  replay_decision?: 'BLOCK' | 'HITL' | 'ALLOW' | string;
+  sensitive_db_calls_before: number;
+  sensitive_db_calls_after: number;
+  mutation_lineage: string[];
+}
 
 export default function RegressionsPage() {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedRegression, setSelectedRegression] = useState<RegressionItem | null>(null);
+
+  const securedCount = DEMO_REGRESSIONS.filter(r => r.secured).length;
+  const dbCallsPrevented = DEMO_REGRESSIONS.reduce((s, r) => s + r.sensitive_db_calls_before, 0);
+
+  const filtered = (DEMO_REGRESSIONS as RegressionItem[]).filter(r => {
+    const matchSearch =
+      r.regression_id.toLowerCase().includes(search.toLowerCase()) ||
+      r.attack_type.toLowerCase().includes(search.toLowerCase()) ||
+      r.attack_id.toLowerCase().includes(search.toLowerCase());
+
+    const matchStatus =
+      statusFilter === 'ALL' ||
+      (statusFilter === 'SECURED' && r.secured) ||
+      (statusFilter === 'OPEN' && !r.secured);
+
+    return matchSearch && matchStatus;
+  });
+
+  const columns = [
+    {
+      key: 'regression_id',
+      header: 'Regression Fixture',
+      render: (row: RegressionItem) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-purple-50 flex items-center justify-center text-purple-700 border border-purple-200">
+            <RotateCcw size={13} />
+          </div>
+          <div>
+            <div className="font-mono text-xs font-semibold text-slate-900">{row.regression_id.toUpperCase()}</div>
+            <div className="text-[11px] text-slate-500 capitalize">{row.attack_type.replace(/_/g, ' ')}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'attack_id',
+      header: 'Source Attack',
+      width: '180px',
+      render: (row: RegressionItem) => (
+        <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+          {row.attack_id}
+        </span>
+      ),
+    },
+    {
+      key: 'expected_decision',
+      header: 'Expected',
+      width: '110px',
+      render: (row: RegressionItem) => (
+        <StatusBadge status={row.expected_decision as any} />
+      ),
+    },
+    {
+      key: 'observed_decision',
+      header: 'Before Fix',
+      width: '120px',
+      render: (row: RegressionItem) => (
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={row.observed_decision as any} />
+          <span className="text-[10px] text-red-600 font-mono font-bold">({row.sensitive_db_calls_before} leak)</span>
+        </div>
+      ),
+    },
+    {
+      key: 'replay_decision',
+      header: 'Replay Verdict',
+      width: '120px',
+      render: (row: RegressionItem) => (
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={(row.replay_decision ?? 'BLOCK') as any} />
+          <CheckCircle2 size={13} className="text-emerald-600" />
+        </div>
+      ),
+    },
+    {
+      key: 'secured',
+      header: 'Status',
+      width: '110px',
+      render: (row: RegressionItem) => (
+        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
+          row.secured ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+        }`}>
+          {row.secured ? 'SECURED' : 'OPEN'}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div>
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <RotateCcw size={18} className="text-purple-400" />
-          Regression Library
-        </h1>
-        <p className="text-sm text-zinc-500 mt-1">
-          Attack scenarios where bypass was observed. Each is archived as a regression fixture and replayed to verify the fix.
-        </p>
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Security Regression Library"
+        subtitle="Historical attack fixtures where vulnerabilities were patched and verified via continuous deterministic replay"
+        badge="Replay Suite"
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Total Regressions" value={DEMO_REGRESSIONS.length} />
+        <MetricCard label="Secured Fixtures" value={`${securedCount} / ${DEMO_REGRESSIONS.length}`} status="ALLOW" />
+        <MetricCard label="Open Vulnerabilities" value={DEMO_REGRESSIONS.length - securedCount} status="ALLOW" />
+        <MetricCard label="DB Leaks Prevented" value={dbCallsPrevented} status="ALLOW" />
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/40 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Total Regressions</div>
-          <div className="text-2xl font-bold font-mono text-purple-400">{DEMO_REGRESSIONS.length}</div>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Secured</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">
-            {DEMO_REGRESSIONS.filter(r => r.secured).length} / {DEMO_REGRESSIONS.length}
-          </div>
-        </div>
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/40 p-3 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Sensitive DB (before)</div>
-          <div className="text-2xl font-bold font-mono text-red-400">
-            {DEMO_REGRESSIONS.reduce((s, r) => s + r.sensitive_db_calls_before, 0)}
-          </div>
-        </div>
+      {/* Filter and Table */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search regressions by ID or attack type..."
+          filters={[
+            {
+              key: 'status',
+              label: 'Status',
+              options: [
+                { label: 'All Statuses', value: 'ALL' },
+                { label: 'Secured Only', value: 'SECURED' },
+                { label: 'Open Only', value: 'OPEN' },
+              ],
+              value: statusFilter,
+              onChange: setStatusFilter,
+            },
+          ]}
+          activeCount={statusFilter !== 'ALL' || search ? 1 : 0}
+          onReset={() => {
+            setSearch('');
+            setStatusFilter('ALL');
+          }}
+        />
+
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="regression_id"
+          onRowClick={(row) => setSelectedRegression(row)}
+          emptyMessage="No regression fixtures matched your filter criteria."
+        />
       </div>
 
-      {/* Regression list */}
-      <div className="space-y-3">
-        {DEMO_REGRESSIONS.map(reg => (
-          <div key={reg.regression_id}
-            className="rounded-xl border border-zinc-800/50 bg-zinc-900/40 p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm font-bold text-purple-400">{reg.regression_id.toUpperCase()}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold ${
-                    reg.secured
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                      : 'border-red-500/30 bg-red-500/10 text-red-400'
-                  }`}>
-                    {reg.secured ? 'SECURED' : 'OPEN'}
-                  </span>
-                </div>
-                <div className="text-xs text-zinc-400">{reg.attack_type.replace(/_/g, ' ')}</div>
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedRegression}
+        onClose={() => setSelectedRegression(null)}
+        title={selectedRegression ? selectedRegression.regression_id.toUpperCase() : ''}
+        subtitle={selectedRegression ? `Source Attack: ${selectedRegression.attack_id}` : ''}
+        badge={selectedRegression ? (
+          <span className="text-xs font-semibold px-2 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
+            {selectedRegression.secured ? 'VERIFIED SECURED' : 'OPEN'}
+          </span>
+        ) : null}
+      >
+        {selectedRegression && (
+          <div className="space-y-6">
+            {/* Overview */}
+            <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs text-emerald-900 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="text-emerald-700" />
+                <span>Deterministic Replay Protection Verified</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-600">Attack: {reg.attack_id}</span>
+              <p>Replay of this historical attack payload against current policy rules deterministically yields BLOCK verdict with 0 sensitive resource access.</p>
+            </div>
+
+            {/* Before vs After Comparison */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Replay Decision Comparison</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 bg-red-50/60 border border-red-200 rounded-lg space-y-2">
+                  <div className="text-[10px] uppercase font-semibold text-red-700">Before Fix</div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={selectedRegression.observed_decision as any} />
+                    <span className="text-xs font-bold text-red-700">{selectedRegression.sensitive_db_calls_before} DB leaks</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-2">
+                  <div className="text-[10px] uppercase font-semibold text-emerald-700">Secured Replay</div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={(selectedRegression.replay_decision ?? 'BLOCK') as any} />
+                    <span className="text-xs font-bold text-emerald-700">{selectedRegression.sensitive_db_calls_after} DB leaks</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Before / After grid */}
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <div className="rounded-lg bg-zinc-900/60 border border-zinc-800/60 p-3">
-                <div className="text-[9px] text-zinc-600 uppercase tracking-wider mb-2">Expected Decision</div>
-                <DecisionBadge decision={reg.expected_decision} size="md" />
-              </div>
-              <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3">
-                <div className="text-[9px] text-zinc-600 uppercase tracking-wider mb-2">Observed (Before Fix)</div>
-                <DecisionBadge decision={reg.observed_decision} size="md" />
-                <div className="text-[10px] text-red-400 mt-1.5 font-semibold">
-                  sensitive_db_calls: {reg.sensitive_db_calls_before}
+            {/* Mutation Lineage */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Mutation Lineage Trace</div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {selectedRegression.mutation_lineage.map((id, idx) => (
+                    <span key={id} className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-800 font-medium">
+                        {id}
+                      </span>
+                      {idx < selectedRegression.mutation_lineage.length - 1 && (
+                        <ArrowRight size={12} className="text-slate-400" />
+                      )}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3">
-                <div className="text-[9px] text-zinc-600 uppercase tracking-wider mb-2">Secured Replay</div>
-                <DecisionBadge decision={reg.replay_decision ?? 'BLOCK'} size="md" />
-                <div className="text-[10px] text-emerald-400 mt-1.5 font-semibold">
-                  sensitive_db_calls: {reg.sensitive_db_calls_after}
-                </div>
-              </div>
-            </div>
-
-            {/* Mutation lineage */}
-            <div className="mt-3 pt-3 border-t border-zinc-800/40">
-              <div className="text-[10px] text-zinc-600 mb-1.5 uppercase tracking-wider">Mutation Lineage</div>
-              <div className="flex items-center gap-1 flex-wrap">
-                {reg.mutation_lineage.map((id, i) => (
-                  <span key={id} className="flex items-center gap-1">
-                    <span className="text-[10px] font-mono bg-zinc-800/60 px-2 py-0.5 rounded text-zinc-400">{id}</span>
-                    {i < reg.mutation_lineage.length - 1 && <ArrowRight size={9} className="text-zinc-700" />}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 mt-3">
-              <Link href="/campaigns" className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1">
-                View campaign <ArrowRight size={10} />
-              </Link>
-              <Link href="/forensics" className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1">
-                Forensic report <ArrowRight size={10} />
-              </Link>
             </div>
           </div>
-        ))}
-      </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

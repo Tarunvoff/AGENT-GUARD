@@ -1,157 +1,248 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { DataTable, Column } from '@/components/ui/DataTable';
+import { DecisionBadge, SeverityBadge } from '@/components/ui/StatusBadge';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
+import { ExecutionTruth } from '@/components/ui/ExecutionTruth';
 import { DEMO_EVENTS } from '@/data/demo';
-import { DecisionBadge } from '@/components/ui/security';
-import { Activity, Pause, Play, Filter, Terminal, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
-
-const DECISION_ICONS: Record<string, React.ElementType> = {
-  ALLOW: CheckCircle2,
-  BLOCK: AlertTriangle,
-  HITL: Clock,
-  MONITOR: Activity,
-};
-
-const DECISION_COLORS: Record<string, string> = {
-  ALLOW: 'text-emerald-400',
-  BLOCK: 'text-red-400',
-  HITL: 'text-amber-400',
-  MONITOR: 'text-sky-400',
-};
+import { Activity, Pause, Play, AlertTriangle, CheckCircle2, Clock, ShieldAlert, Radio } from 'lucide-react';
 
 export default function ActivityPage() {
   const [paused, setPaused] = useState<boolean>(false);
-  const [filter, setFilter] = useState<string>('all');
-  const [events, setEvents] = useState<any[]>(DEMO_EVENTS.slice(0, 20));
-  const [tick, setTick] = useState<number>(0);
-  const feedRef = useRef<HTMLDivElement>(null);
+  const [decisionFilter, setDecisionFilter] = useState<string>('ALL');
+  const [search, setSearch] = useState<string>('');
+  const [events, setEvents] = useState<any[]>(DEMO_EVENTS.slice(0, 30));
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  // Live simulation event generator (bounded buffer to 100 max)
   useEffect(() => {
     if (paused) return;
     const interval = setInterval(() => {
-      setTick(t => t + 1);
+      const sample = DEMO_EVENTS[Math.floor(Math.random() * DEMO_EVENTS.length)];
       const newEvt = {
-        ...DEMO_EVENTS[Math.floor(Math.random() * DEMO_EVENTS.length)],
-        event_id: `evt_live_${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        ...sample,
+        event_id: `evt_live_${Date.now().toString(36)}`,
+        timestamp: new Date().toLocaleTimeString(),
       };
-      setEvents(prev => [newEvt, ...prev].slice(0, 100));
-    }, 2200);
+      setEvents((prev) => [newEvt, ...prev].slice(0, 100));
+    }, 3000);
     return () => clearInterval(interval);
   }, [paused]);
 
-  const filtered = filter === 'all' ? events : events.filter((e: any) => e.decision === filter);
+  const filtered = events.filter((e) => {
+    if (decisionFilter !== 'ALL' && e.decision !== decisionFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const match =
+        (e.event_id || '').toLowerCase().includes(q) ||
+        (e.agent_id || '').toLowerCase().includes(q) ||
+        (e.tool_name || '').toLowerCase().includes(q) ||
+        (e.decision || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
 
   const stats = {
-    ALLOW: events.filter((e: any) => e.decision === 'ALLOW').length,
-    BLOCK: events.filter((e: any) => e.decision === 'BLOCK').length,
-    HITL: events.filter((e: any) => e.decision === 'HITL').length,
+    allow: events.filter((e) => e.decision === 'ALLOW').length,
+    block: events.filter((e) => e.decision === 'BLOCK').length,
+    hitl: events.filter((e) => e.decision === 'HITL').length,
     total: events.length,
   };
 
+  const columns: Column<any>[] = [
+    {
+      key: 'timestamp',
+      header: 'Time',
+      mono: true,
+      width: '100px',
+      render: (row) => <span className="text-slate-500">{row.timestamp || 'Just now'}</span>,
+    },
+    {
+      key: 'event_id',
+      header: 'Event ID',
+      mono: true,
+      width: '130px',
+      render: (row) => (
+        <span className="font-semibold text-slate-900 hover:text-sky-700 underline decoration-slate-300">
+          {row.event_id}
+        </span>
+      ),
+    },
+    {
+      key: 'agent_id',
+      header: 'Agent',
+      render: (row) => (
+        <span className="font-mono text-[11px] text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
+          {row.agent_id || 'system'}
+        </span>
+      ),
+    },
+    {
+      key: 'event_type',
+      header: 'Event Type',
+      mono: true,
+      render: (row) => <span className="text-slate-700 font-medium">{row.event_type || 'tool_invocation'}</span>,
+    },
+    {
+      key: 'tool_name',
+      header: 'Tool / Target',
+      mono: true,
+      render: (row) => <span className="font-semibold text-slate-900">{row.tool_name || 'internal_resource'}</span>,
+    },
+    {
+      key: 'decision',
+      header: 'Decision',
+      width: '100px',
+      render: (row) => <DecisionBadge decision={row.decision || 'ALLOW'} />,
+    },
+    {
+      key: 'risk_score',
+      header: 'Risk Score',
+      align: 'right',
+      width: '100px',
+      render: (row) => (
+        <span className="font-mono text-[11px] text-slate-600">
+          {typeof row.risk_score === 'number' ? row.risk_score.toFixed(2) : '0.00'}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Activity size={18} className="text-sky-400" />
-            Live Activity Feed
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">Real-time security decisions across all agents and tools</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${paused ? 'bg-zinc-500' : 'bg-emerald-400 animate-pulse'}`} />
-          <span className="text-xs text-zinc-400">{paused ? 'PAUSED' : 'LIVE'}</span>
-          <button
-            onClick={() => setPaused(p => !p)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700/50 text-xs text-zinc-300 hover:text-white hover:bg-zinc-700/80 transition-colors cursor-pointer"
-          >
-            {paused ? <Play size={12} /> : <Pause size={12} />}
-            {paused ? 'Resume' : 'Pause'}
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Total Events', value: stats.total, color: 'text-zinc-200', bg: 'bg-zinc-800/40', border: 'border-zinc-700/30' },
-          { label: 'Allowed', value: stats.ALLOW, color: 'text-emerald-400', bg: 'bg-emerald-500/5', border: 'border-emerald-500/20' },
-          { label: 'Blocked', value: stats.BLOCK, color: 'text-red-400', bg: 'bg-red-500/5', border: 'border-red-500/20' },
-          { label: 'HITL Review', value: stats.HITL, color: 'text-amber-400', bg: 'bg-amber-500/5', border: 'border-amber-500/20' },
-        ].map(s => (
-          <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} p-4 text-center`}>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">{s.label}</div>
-            <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filter Bar */}
-      <div className="flex items-center gap-3">
-        <Filter size={13} className="text-zinc-500" />
-        {['all', 'ALLOW', 'BLOCK', 'HITL', 'MONITOR'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1 text-[11px] rounded font-medium uppercase tracking-wider transition-colors cursor-pointer ${
-              filter === f ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-
-      {/* Live Feed */}
-      <div ref={feedRef} className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
-        {filtered.map((evt: any, i: number) => {
-          const decisionKey = evt.decision || 'MONITOR';
-          const DecIcon = DECISION_ICONS[decisionKey] || Activity;
-          const isNew = i === 0 && !paused;
-          const toolLabel = evt.tool || evt.tool_name || (evt.event_data?.tool_name) || 'tool_invocation';
-          const actionLabel = evt.action || evt.reason || evt.event_data?.reason;
-
-          return (
-            <div
-              key={evt.event_id || i}
-              className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-                isNew
-                  ? 'bg-sky-500/5 border-sky-500/20 animate-pulse-slow'
-                  : 'bg-zinc-900/30 border-zinc-800/40 hover:border-zinc-700/50'
+    <div className="max-w-[1600px] mx-auto space-y-5">
+      <PageHeader
+        title="Live Activity Stream"
+        description="Real-time security telemetry feed of all tool requests, capability validations, taint tracking events, and deterministic policy evaluations."
+        breadcrumbs={[
+          { label: 'Overview', href: '/dashboard' },
+          { label: 'Live Activity' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPaused(!paused)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                paused
+                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
               }`}
             >
-              <DecIcon size={14} className={`mt-0.5 flex-shrink-0 ${DECISION_COLORS[decisionKey] || 'text-zinc-400'}`} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono text-zinc-300 truncate">{toolLabel}</span>
-                  <DecisionBadge decision={decisionKey as any} />
-                  {evt.agent_id && (
-                    <span className="text-[10px] text-zinc-500 bg-zinc-800/60 px-2 py-0.5 rounded font-mono">{evt.agent_id}</span>
-                  )}
-                </div>
-                {actionLabel && (
-                  <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{actionLabel}</div>
-                )}
-              </div>
-              <div className="text-[10px] text-zinc-600 font-mono flex-shrink-0">
-                {evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : '--:--:--'}
-              </div>
+              {paused ? (
+                <>
+                  <Play size={13} className="text-amber-700" />
+                  <span>Resume Stream</span>
+                </>
+              ) : (
+                <>
+                  <Pause size={13} className="text-slate-600" />
+                  <span>Pause Stream</span>
+                </>
+              )}
+            </button>
+            <div className="flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded font-mono font-medium">
+              <span className={`w-2 h-2 rounded-full ${paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`} />
+              <span>{paused ? 'PAUSED' : 'LIVE (3s)'}</span>
             </div>
-          );
-        })}
+          </div>
+        }
+      />
+
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MetricCard label="Total Streamed" value={stats.total} subtext="Bounded to 100 max" status="neutral" icon={Activity} />
+        <MetricCard label="Allowed Actions" value={stats.allow} subtext="Policy verified" status="healthy" icon={CheckCircle2} />
+        <MetricCard label="Blocked Actions" value={stats.block} subtext="Threat contained" status="critical" icon={ShieldAlert} />
+        <MetricCard label="Human Approvals" value={stats.hitl} subtext="HITL Escalations" status="warning" icon={Clock} />
       </div>
 
-      {/* Terminal-style footer */}
-      <div className="rounded-lg bg-black/40 border border-zinc-800/50 p-3 flex items-center gap-2">
-        <Terminal size={12} className="text-emerald-400" />
-        <span className="font-mono text-[11px] text-emerald-400">
-          agentguard stream --follow --format json &gt; /var/log/agentguard/live.jsonl
-        </span>
-        <div className="flex-1" />
-        <span className="text-[10px] text-zinc-600 font-mono">{events.length} events buffered</span>
-      </div>
+      {/* Filter Toolbar */}
+      <FilterBar
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search event ID, agent, tool…"
+        totalCount={events.length}
+        activeCount={filtered.length}
+        onReset={() => {
+          setSearch('');
+          setDecisionFilter('ALL');
+        }}
+        dropdowns={[
+          {
+            name: 'decision',
+            label: 'Decision',
+            value: decisionFilter,
+            onChange: setDecisionFilter,
+            options: [
+              { label: 'All Decisions', value: 'ALL' },
+              { label: 'ALLOW', value: 'ALLOW' },
+              { label: 'BLOCK', value: 'BLOCK' },
+              { label: 'HITL', value: 'HITL' },
+            ],
+          },
+        ]}
+      />
+
+      {/* Table */}
+      <DataTable
+        columns={columns}
+        data={filtered}
+        keyExtractor={(row) => row.event_id}
+        onRowClick={(row) => {
+          setSelectedEvent(row);
+          setIsDrawerOpen(true);
+        }}
+        selectedKey={selectedEvent?.event_id}
+        pageSize={15}
+      />
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        title={`Event: ${selectedEvent?.event_id}`}
+        subtitle={`${selectedEvent?.timestamp} • ${selectedEvent?.tool_name}`}
+        badge={selectedEvent && <DecisionBadge decision={selectedEvent.decision} />}
+      >
+        {selectedEvent && (
+          <div className="space-y-4 text-xs">
+            <ExecutionTruth
+              intended={selectedEvent.decision === 'ALLOW'}
+              requested={true}
+              allowed={selectedEvent.decision === 'ALLOW'}
+              executed={selectedEvent.decision === 'ALLOW'}
+              blockedAt={selectedEvent.decision === 'BLOCK' ? 'Deterministic Policy Gate' : undefined}
+            />
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">AGENT</span>
+                <span className="font-mono text-slate-900">{selectedEvent.agent_id}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">INVOKED TOOL</span>
+                <span className="font-mono font-semibold text-slate-900">{selectedEvent.tool_name}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">TRACE ID</span>
+                <span className="font-mono text-slate-600">{selectedEvent.trace_id || 'trc_default'}</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">EVENT PAYLOAD</span>
+              <pre className="p-3 bg-slate-900 text-slate-100 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {JSON.stringify(selectedEvent, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

@@ -1,299 +1,290 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { DataTable, Column } from '@/components/ui/DataTable';
+import { DecisionBadge, SeverityBadge, TrustBadge } from '@/components/ui/StatusBadge';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
+import { ExecutionTruth } from '@/components/ui/ExecutionTruth';
 import { 
-  Shield, Users, CheckSquare, Zap, AlertTriangle, XCircle, 
-  Activity, Lock, Database, Brain, Network, ArrowRight,
-  ChevronDown, ChevronUp, TrendingUp, TrendingDown
+  ShieldCheck, ShieldAlert, Users, AlertTriangle, 
+  RotateCcw, Activity, ArrowUpRight, CheckCircle2, 
+  ExternalLink, Zap, Lock, RefreshCw, Compass
 } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend 
+  Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { DEMO_OVERVIEW, DEMO_EVENTS, DECISION_TIME_SERIES } from '@/data/demo';
-import { DecisionBadge, TaintBadge, SeverityBadge, StatCard, SectionHeader } from '@/components/ui/security';
-import LiveActivityFeed from '@/components/cards/LiveActivityFeed';
-import MantaFlow from '@/components/cards/MantaFlow';
-import { formatRelative } from '@/lib/colors';
-import Link from 'next/link';
 
-const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#60a5fa'];
+interface ActivityRecord {
+  id: string;
+  time: string;
+  agent: string;
+  action: string;
+  resource: string;
+  risk: string;
+  decision: string;
+  executed: boolean;
+}
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
+interface IncidentRecord {
+  id: string;
+  name: string;
+  severity: string;
+  agent: string;
+  detection: string;
+  state: string;
+  time: string;
+}
+
+const DEMO_ACTIVITIES: ActivityRecord[] = [
+  { id: 'evt_001', time: '15:32:10', agent: 'research-agent-001', action: 'customer_db.read', resource: 'customer_pii_vault', risk: 'CRITICAL', decision: 'BLOCK', executed: false },
+  { id: 'evt_002', time: '15:31:45', agent: 'analysis-agent-001', action: 'report.generate', resource: 'internal_reports', risk: 'LOW', decision: 'ALLOW', executed: true },
+  { id: 'evt_003', time: '15:30:12', agent: 'orchestrator-001', action: 'delegate.scope', resource: 'task_graph', risk: 'LOW', decision: 'ALLOW', executed: true },
+  { id: 'evt_004', time: '15:28:55', agent: 'external-mcp-bot', action: 'http_post', resource: 'external_webhook', risk: 'HIGH', decision: 'BLOCK', executed: false },
+  { id: 'evt_005', time: '15:26:30', agent: 'data-sync-002', action: 'db.query', resource: 'financial_ledger', risk: 'MEDIUM', decision: 'ALLOW', executed: true },
+  { id: 'evt_006', time: '15:24:18', agent: 'research-agent-001', action: 'web_search', resource: 'public_web', risk: 'LOW', decision: 'ALLOW', executed: true },
+];
+
+const DEMO_INCIDENTS: IncidentRecord[] = [
+  { id: 'INC-1049', name: 'Authority Escalation Attempt', severity: 'HIGH', agent: 'research-agent-001', detection: 'Monotonic Invariant Rule', state: 'CONTAINED', time: '15:14' },
+  { id: 'INC-1048', name: 'Tainted MCP Prompt Injection', severity: 'CRITICAL', agent: 'orchestrator-001', detection: 'Taint Sink Boundary', state: 'CLOSED', time: '14:22' },
+];
+
+const TIME_SERIES_DATA = [
+  { time: '10:00', allow: 45, block: 2, hitl: 0 },
+  { time: '11:00', allow: 62, block: 4, hitl: 1 },
+  { time: '12:00', allow: 78, block: 1, hitl: 0 },
+  { time: '13:00', allow: 94, block: 5, hitl: 2 },
+  { time: '14:00', allow: 110, block: 3, hitl: 0 },
+  { time: '15:00', allow: 85, block: 2, hitl: 1 },
+];
 
 export default function CommandCenterPage() {
-  const overview = DEMO_OVERVIEW;
-  const [activeTab, setActiveTab] = useState<'timeline' | 'distribution'>('timeline');
-  const [posture, setPosture] = useState<{ score: number; rating: string; metrics: Record<string, any> } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<ActivityRecord | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    fetch(API_BASE + '/posture')
-      .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(d => {
-        const score = typeof d.security_score === 'number' ? d.security_score : (typeof d.overall_score === 'number' ? d.overall_score : 98.0);
-        const rating = d.rating || d.posture_grade || 'HEALTHY';
-        const metrics = d.metrics || d.dimensions || {
-          policy_engine_uptime: 100,
-          ai_secura_uptime: 100,
-          apiris_uptime: 100,
-          zero_unauthorized_db: 100,
-        };
-        setPosture({ score, rating, metrics });
-      })
-      .catch(() => setPosture({
-        score: 98.0,
-        rating: 'HEALTHY',
-        metrics: {
-          policy_engine_uptime: 100,
-          ai_secura_uptime: 100,
-          apiris_uptime: 100,
-          zero_unauthorized_db: 100,
-        }
-      }));
-  }, []);
-
-  const pieData = [
-    { name: 'ALLOW', value: overview.blocked === 0 ? 0 : 70 },
-    { name: 'HITL', value: overview.hitl },
-    { name: 'BLOCK', value: overview.blocked },
-    { name: 'MONITOR', value: 12 },
+  const activityColumns: Column<ActivityRecord>[] = [
+    { key: 'time', header: 'Time', mono: true, width: '90px' },
+    {
+      key: 'agent',
+      header: 'Agent',
+      render: (row) => (
+        <span className="font-mono text-[11px] font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
+          {row.agent}
+        </span>
+      ),
+    },
+    { key: 'action', header: 'Action', mono: true, render: (row) => <span className="font-semibold text-slate-900">{row.action}</span> },
+    { key: 'resource', header: 'Protected Resource', mono: true, render: (row) => <span className="text-slate-500">{row.resource}</span> },
+    { key: 'risk', header: 'Risk', width: '100px', render: (row) => <SeverityBadge severity={row.risk} /> },
+    { key: 'decision', header: 'Decision', width: '90px', render: (row) => <DecisionBadge decision={row.decision} /> },
+    {
+      key: 'executed',
+      header: 'Execution Status',
+      align: 'right',
+      render: (row) => (
+        <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${row.executed ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' : 'text-slate-500 bg-slate-100 border border-slate-200'}`}>
+          {row.executed ? 'EXECUTED' : 'NOT EXECUTED'}
+        </span>
+      ),
+    },
   ];
 
+  const handleRowClick = (event: ActivityRecord) => {
+    setSelectedEvent(event);
+    setIsDrawerOpen(true);
+  };
+
   return (
-    <div className="p-6 space-y-6 min-h-screen bg-[#090d16]">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Agent Security Command Center</h1>
-          <p className="text-sm text-zinc-500 mt-1 max-w-xl">
-            Real-time causal visibility and deterministic enforcement across autonomous AI systems.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-            Unauthorized Executions: 0
-          </div>
-          <Link href="/demo" className="px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-xs text-sky-300 hover:bg-sky-500/20 transition-colors">
-            Run Demo →
-          </Link>
-        </div>
-      </div>
-
-      {/* 4 MANTA Visual */}
-      <MantaFlow />
-
-      {/* Phase 9 Posture Strip */}
-      {posture && (
-        <div className="rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/5 via-zinc-900/40 to-violet-500/5 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
-              <Shield size={15} className="text-violet-400" />
-            </div>
-            <div>
-              <div className="text-[10px] text-violet-400 font-mono font-bold uppercase tracking-widest">PHASE 9 — CONTINUOUS SECURITY POSTURE</div>
-              <div className="text-sm font-semibold text-zinc-200 mt-0.5">
-                Rating: <span className="text-emerald-400 font-black">{posture.rating}</span>
-                <span className="text-zinc-500 font-normal ml-2">{(posture.score ?? 100).toFixed(1)}/100</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            {Object.entries(posture.metrics || {}).slice(0, 4).map(([k, v]) => {
-              const numVal = typeof v === 'number' ? v : 0;
-              return (
-                <div key={k} className="text-center">
-                  <div className="text-[10px] text-zinc-500 capitalize">{k.replace(/_/g, ' ')}</div>
-                  <div className="text-sm font-bold font-mono text-emerald-400">
-                    {numVal % 1 === 0 ? numVal : numVal.toFixed(1)}
-                  </div>
-                </div>
-              );
-            })}
-            <Link href="/posture" className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-xs font-semibold text-white transition-colors">
-              Full Posture →
+    <div className="max-w-[1600px] mx-auto space-y-6">
+      <PageHeader
+        title="Security Command Center"
+        description="Continuous runtime security control plane, telemetry metrics, and deterministic policy enforcement across all autonomous agents."
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/security-gates"
+              className="px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors flex items-center gap-1.5"
+            >
+              <CheckCircle2 size={13} className="text-emerald-600" />
+              <span>CI/CD Quality Gate: PASS</span>
             </Link>
           </div>
+        }
+      />
+
+      {/* Top Banner: Security Posture Scorecard */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 border-l-4 border-l-emerald-500">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center flex-shrink-0 font-bold text-xl">
+            A
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                Security Posture: 98.0 / 100
+              </h2>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                HEALTHY
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Deterministic runtime policies active. 0 unauthorized executions across 472 intercepted tool invocations.
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* KPI Row 1 */}
-      <div className="grid grid-cols-6 gap-3">
-        <StatCard label="Active Agents" value={overview.agents} icon={Users} color="text-sky-300" sublabel="Multi-agent runtime" />
-        <StatCard label="Active Tasks" value={overview.active_tasks ?? 1} icon={CheckSquare} color="text-indigo-300" sublabel="In execution" />
-        <StatCard label="Tool Calls" value={overview.sensitive_attempts + 20} icon={Zap} color="text-violet-300" sublabel="Total intercepted" />
-        <StatCard label="Blocked Actions" value={overview.blocked} icon={XCircle} color="text-red-400" critical sublabel={`${((overview.blocked / 73) * 100).toFixed(0)}% block rate`} />
-        <StatCard label="Incidents" value={overview.incidents} icon={AlertTriangle} color="text-orange-400" sublabel="Open incidents" />
-        <StatCard label="Bypasses" value={overview.bypasses} icon={Shield} color="text-emerald-400" sublabel="0 unauthorized execs" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-5">
+          <div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase block">Threat Prevention</span>
+            <span className="font-mono font-bold text-slate-900">100.0%</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase block">Delegation Hygiene</span>
+            <span className="font-mono font-bold text-slate-900">100.0%</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase block">Taint Containment</span>
+            <span className="font-mono font-bold text-slate-900">100.0%</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase block">Offensive Immunity</span>
+            <span className="font-mono font-bold text-slate-900">100.0%</span>
+          </div>
+        </div>
       </div>
 
-      {/* KPI Row 2 */}
-      <div className="grid grid-cols-6 gap-3">
-        <StatCard label="Attack Variants" value={overview.attacks_today} icon={Network} color="text-red-300" sublabel="Phase 5 campaign" />
-        <StatCard label="Regressions" value={overview.regressions} icon={Lock} color="text-purple-400" sublabel="1 secured replay" />
-        <StatCard label="Sensitive Prevented" value={overview.sensitive_prevented} icon={Database} color="text-emerald-300" sublabel="PII vault protected" />
-        <StatCard label="Sensitive Executed" value={overview.sensitive_executed} icon={Database} color="text-emerald-400" sublabel="ZERO unauthorized" />
-        <StatCard label="AI Secura" value="100%" icon={Brain} color="text-violet-300" sublabel="100% availability" />
-        <StatCard label="APIRIS" value="100%" icon={Zap} color="text-sky-300" sublabel="100% availability" />
+      {/* KPI Grid (6 Compact Enterprise Metric Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard label="Active Agents" value="4" subtext="All Contained" status="healthy" icon={Users} />
+        <MetricCard label="Active Incidents" value="0" subtext="0 Critical / High" status="healthy" icon={AlertTriangle} />
+        <MetricCard label="Blocked Actions" value="17" subtext="100% Policy Block" status="neutral" icon={ShieldAlert} />
+        <MetricCard label="Drift Alerts" value="0" subtext="Entropy Normal" status="healthy" icon={Compass} />
+        <MetricCard label="Open Regressions" value="0" subtext="42 Replays Passing" status="healthy" icon={RotateCcw} />
+        <MetricCard label="Unauthorized DB Calls" value="0" subtext="Zero Sink Bypasses" status="healthy" icon={Lock} />
       </div>
 
-      {/* Main grid: chart + live feed */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Policy decisions chart */}
-        <div className="col-span-2 rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-          <SectionHeader title="Policy Decision Timeline">
-            <div className="flex gap-1">
-              {(['timeline', 'distribution'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-2 py-1 text-[10px] font-medium rounded uppercase tracking-wider transition-colors ${
-                    activeTab === tab
-                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  {tab}
-                </button>
+      {/* Main Grid: Activity Table & Side Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: Real-Time Security Activity */}
+        <div className="lg:col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <Activity size={16} className="text-slate-500" />
+              <span>Real-Time Security Activity</span>
+            </h3>
+            <Link href="/activity" className="text-xs text-sky-700 hover:text-sky-900 font-medium flex items-center gap-1">
+              <span>View all events</span>
+              <ArrowUpRight size={12} />
+            </Link>
+          </div>
+
+          <DataTable
+            columns={activityColumns}
+            data={DEMO_ACTIVITIES}
+            keyExtractor={(item) => item.id}
+            onRowClick={handleRowClick}
+            pageSize={6}
+          />
+        </div>
+
+        {/* Right 1 Col: Security Trends & Active Incidents */}
+        <div className="space-y-6">
+          {/* Security Decisions Chart */}
+          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Hourly Enforcement Trend
+              </h4>
+              <span className="text-[10px] text-slate-400 font-mono">Last 6 Hours</span>
+            </div>
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={TIME_SERIES_DATA} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '6px', fontSize: '11px', color: '#fff' }}
+                  />
+                  <Area type="monotone" dataKey="allow" stroke="#10B981" fill="#D1FAE5" fillOpacity={0.6} />
+                  <Area type="monotone" dataKey="block" stroke="#EF4444" fill="#FEE2E2" fillOpacity={0.8} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Active Incidents Overview */}
+          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <AlertTriangle size={13} className="text-amber-500" />
+                <span>Recent Incident Lifecycles</span>
+              </h4>
+              <Link href="/incidents" className="text-xs text-sky-700 hover:text-sky-900 font-medium">
+                Manage
+              </Link>
+            </div>
+
+            <div className="space-y-2">
+              {DEMO_INCIDENTS.map((inc) => (
+                <div key={inc.id} className="p-2.5 rounded border border-slate-100 hover:border-slate-300 transition-colors bg-slate-50/50">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-mono font-bold text-slate-900">{inc.id}</span>
+                    <SeverityBadge severity={inc.severity} />
+                  </div>
+                  <div className="text-xs font-semibold text-slate-800 mt-1">{inc.name}</div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5 pt-1.5 border-t border-slate-100">
+                    <span className="font-mono">{inc.agent}</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">
+                      {inc.state}
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
-          </SectionHeader>
-
-          {activeTab === 'timeline' ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={DECISION_TIME_SERIES} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#6b7280' }} />
-                <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} />
-                <Tooltip
-                  contentStyle={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 8, fontSize: 11 }}
-                  labelStyle={{ color: '#9ca3af' }}
-                />
-                <Area type="monotone" dataKey="allowed" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={1.5} name="ALLOW" />
-                <Area type="monotone" dataKey="blocked" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} strokeWidth={1.5} name="BLOCK" />
-                <Area type="monotone" dataKey="hitl" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={1.5} name="HITL" />
-                <Area type="monotone" dataKey="tainted" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.08} strokeWidth={1.5} name="TAINTED" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                  {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} fillOpacity={0.8} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 8, fontSize: 11 }} />
-                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-
-          {/* Legend */}
-          <div className="flex gap-4 mt-3 text-[10px]">
-            {[
-              { color: '#10b981', label: 'ALLOW' },
-              { color: '#ef4444', label: 'BLOCK' },
-              { color: '#f59e0b', label: 'HITL' },
-              { color: '#8b5cf6', label: 'TAINTED' },
-            ].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                <span className="text-zinc-500">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live feed */}
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4 overflow-hidden">
-          <LiveActivityFeed />
-        </div>
-      </div>
-
-      {/* Bottom row: Phase 5 summary + quick links */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Phase 5 Results */}
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-          <SectionHeader title="Phase 5 Campaign Results" subtitle="Adaptive Offensive Validation" />
-          <div className="space-y-2">
-            {[
-              { label: 'Attack Variants', value: '70 / 70', sub: '100% blocked', color: 'text-emerald-400' },
-              { label: 'Unauthorized DB Calls', value: '0', sub: 'Zero sensitive executions', color: 'text-emerald-400' },
-              { label: 'Mean Latency', value: '0.64 ms', sub: 'P95: 0.93 ms', color: 'text-sky-400' },
-              { label: 'AI Secura', value: '100%', sub: 'Available throughout', color: 'text-violet-400' },
-              { label: 'Regression Secured', value: '1 / 1', sub: 'Replay: BLOCK', color: 'text-emerald-400' },
-            ].map(({ label, value, sub, color }) => (
-              <div key={label} className="flex items-center justify-between py-1.5 border-b border-zinc-800/40 last:border-0">
-                <div>
-                  <div className="text-xs text-zinc-300">{label}</div>
-                  <div className="text-[10px] text-zinc-600">{sub}</div>
-                </div>
-                <div className={`text-sm font-bold font-mono ${color}`}>{value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Authority violation summary */}
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-          <SectionHeader title="Security Scorecard" subtitle="Measurable policy metrics" />
-          <div className="space-y-2">
-            {[
-              { label: 'Policy Decisions', value: 1248, color: 'text-zinc-200' },
-              { label: 'Blocked', value: 312, color: 'text-red-400' },
-              { label: 'HITL', value: 48, color: 'text-amber-400' },
-              { label: 'Allowed', value: 888, color: 'text-emerald-400' },
-              { label: 'Tainted Attempts', value: 97, color: 'text-orange-400' },
-              { label: 'Authority Violations', value: 54, color: 'text-orange-400' },
-              { label: 'Unauthorized Executions', value: 0, color: 'text-emerald-400' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0">
-                <span className="text-xs text-zinc-400">{label}</span>
-                <span className={`text-sm font-bold font-mono ${color}`}>{value.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Navigation */}
-        <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-4">
-          <SectionHeader title="Investigate" subtitle="Click to drill down" />
-          <div className="space-y-1.5">
-            {[
-              { label: 'Why was this blocked?', href: '/forensics', color: 'text-red-300', desc: 'Forensic explanation' },
-              { label: 'Attack graph', href: '/attack-graph', color: 'text-orange-300', desc: 'Visual causal chain' },
-              { label: 'Agent profiles', href: '/agents', color: 'text-sky-300', desc: 'Identity & authority' },
-              { label: 'Access matrix', href: '/access/matrix', color: 'text-violet-300', desc: 'Permissions overview' },
-              { label: 'Open incidents', href: '/incidents', color: 'text-orange-300', desc: '2 CRITICAL' },
-              { label: 'Mutation lineage', href: '/campaigns', color: 'text-rose-300', desc: 'Phase 5 attack trees' },
-              { label: 'Regression library', href: '/regressions', color: 'text-purple-300', desc: '1 secured replay' },
-            ].map(({ label, href, color, desc }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-800/40 group transition-colors"
-              >
-                <div>
-                  <div className={`text-xs font-medium ${color}`}>{label}</div>
-                  <div className="text-[10px] text-zinc-600">{desc}</div>
-                </div>
-                <ArrowRight size={12} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
-              </Link>
-            ))}
           </div>
         </div>
       </div>
 
-      {/* Fail-safe notice */}
-      <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/20 px-4 py-3 flex items-center gap-3">
-        <Shield size={14} className="text-sky-400 flex-shrink-0" />
-        <div className="text-[11px] text-zinc-500">
-          <span className="text-sky-400 font-semibold">AI provider availability does not determine authorization.</span>
-          {' '}The Policy Engine remains deterministic and fully authoritative whether AI Secura and APIRIS are online or degraded.
-        </div>
-      </div>
+      {/* Forensic Drawer */}
+      <DetailDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        title={`Event Investigation: ${selectedEvent?.id}`}
+        subtitle={`${selectedEvent?.time} • ${selectedEvent?.action}`}
+        badge={selectedEvent && <DecisionBadge decision={selectedEvent.decision} />}
+      >
+        {selectedEvent && (
+          <div className="space-y-4 text-xs">
+            <ExecutionTruth
+              intended={selectedEvent.decision === 'ALLOW'}
+              requested={true}
+              allowed={selectedEvent.decision === 'ALLOW'}
+              executed={selectedEvent.executed}
+              blockedAt={selectedEvent.decision === 'BLOCK' ? 'Deterministic Taint Sink Gate' : undefined}
+            />
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">AGENT</span>
+                <span className="font-mono text-slate-900">{selectedEvent.agent}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">REQUESTED ACTION</span>
+                <span className="font-mono font-semibold text-slate-900">{selectedEvent.action}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">TARGET RESOURCE</span>
+                <span className="font-mono text-slate-700">{selectedEvent.resource}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

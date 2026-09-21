@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Share2, ChevronDown, ChevronRight, Shield, AlertTriangle, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
-import { TrustBadge, DecisionBadge } from '@/components/ui/security';
-import Link from 'next/link';
+import { Share2, Shield, AlertTriangle, CheckCircle2, ArrowRight, ShieldAlert, Lock, Clock, Info, ExternalLink } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
 
 interface DelegationChain {
   delegation_id: string;
@@ -74,129 +78,299 @@ const DEMO_DELEGATIONS: DelegationChain[] = [
     expires_at: '2026-09-20T07:55:00Z',
     reason: 'Analysis of Q3 financial report files',
   },
+  {
+    delegation_id: 'del_005',
+    from_agent: 'report_agent',
+    to_agent: 'export_worker',
+    authority_granted: ['write_s3', 'egress_network'],
+    authority_subset_of: ['read_db', 'query_customers'],
+    constraints: [],
+    valid: false,
+    depth: 3,
+    created_at: '2026-09-19T11:15:00Z',
+    expires_at: null,
+    reason: 'Attempted egress delegation exceeding parent authority scope',
+    violation: 'Scope escalation detected: write_s3 not in parent granted authority',
+  },
 ];
 
-function DelegationCard({ del }: { del: DelegationChain }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className={`rounded-xl border ${del.valid ? 'border-zinc-800/50 bg-zinc-900/30' : 'border-red-500/30 bg-red-500/5'} transition-colors hover:border-zinc-700/50`}>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          {del.valid
-            ? <CheckCircle2 size={16} className="text-emerald-400 mt-0.5 flex-shrink-0" />
-            : <AlertTriangle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
-          }
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="font-mono text-xs text-zinc-400">{del.delegation_id}</span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${del.valid ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' : 'text-red-400 border-red-500/20 bg-red-500/10'}`}>
-                {del.valid ? 'VALID' : 'VIOLATION'}
+export default function DelegationsPage() {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedDelegation, setSelectedDelegation] = useState<DelegationChain | null>(null);
+
+  const violations = DEMO_DELEGATIONS.filter(d => !d.valid).length;
+  const valid = DEMO_DELEGATIONS.filter(d => d.valid).length;
+  const maxDepth = Math.max(...DEMO_DELEGATIONS.map(d => d.depth));
+
+  const filtered = DEMO_DELEGATIONS.filter(d => {
+    const matchSearch =
+      d.delegation_id.toLowerCase().includes(search.toLowerCase()) ||
+      d.from_agent.toLowerCase().includes(search.toLowerCase()) ||
+      d.to_agent.toLowerCase().includes(search.toLowerCase()) ||
+      d.reason.toLowerCase().includes(search.toLowerCase());
+
+    const matchStatus =
+      statusFilter === 'ALL' ||
+      (statusFilter === 'VALID' && d.valid) ||
+      (statusFilter === 'VIOLATION' && !d.valid);
+
+    return matchSearch && matchStatus;
+  });
+
+  const columns = [
+    {
+      key: 'delegation_id',
+      header: 'Delegation ID',
+      width: '140px',
+      render: (row: DelegationChain) => (
+        <span className="font-mono text-xs font-semibold text-slate-800">{row.delegation_id}</span>
+      ),
+    },
+    {
+      key: 'chain',
+      header: 'Delegation Path',
+      render: (row: DelegationChain) => (
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+            {row.from_agent}
+          </span>
+          <ArrowRight size={12} className="text-slate-400" />
+          <span className="font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium">
+            {row.to_agent}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'authority_granted',
+      header: 'Scope Granted',
+      render: (row: DelegationChain) => (
+        <div className="flex flex-wrap gap-1 max-w-xs">
+          {row.authority_granted.map(a => {
+            const isSubset = row.authority_subset_of.includes(a);
+            return (
+              <span
+                key={a}
+                className={`font-mono text-[11px] px-1.5 py-0.2 rounded border ${
+                  isSubset
+                    ? 'bg-slate-50 text-slate-700 border-slate-200'
+                    : 'bg-red-50 text-red-700 border-red-200 font-semibold'
+                }`}
+              >
+                {a}
               </span>
-              <span className="text-[10px] text-zinc-600 font-mono">depth {del.depth}</span>
+            );
+          })}
+        </div>
+      ),
+    },
+    {
+      key: 'depth',
+      header: 'Depth',
+      width: '80px',
+      render: (row: DelegationChain) => (
+        <span className={`text-xs font-mono px-2 py-0.5 rounded border ${
+          row.depth >= 3 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+        }`}>
+          d={row.depth}
+        </span>
+      ),
+    },
+    {
+      key: 'valid',
+      header: 'Status',
+      width: '120px',
+      render: (row: DelegationChain) => (
+        <StatusBadge status={row.valid ? 'ALLOW' : 'BLOCK'} />
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Created',
+      width: '150px',
+      render: (row: DelegationChain) => (
+        <span className="text-xs text-slate-500">{new Date(row.created_at).toLocaleDateString()}</span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Delegations"
+        subtitle="Authority delegation chains and scope containment verification"
+        badge="Zero-Trust Containment"
+      />
+
+      {/* Invariant Banner */}
+      <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3.5 flex items-start gap-3">
+        <Shield size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="text-xs text-blue-900 leading-relaxed">
+          <span className="font-semibold">Containment Invariant:</span> An agent cannot delegate authority it does not possess. Sub-delegations that exceed the root granted scope are deterministically rejected with zero AI inference.
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard label="Total Delegations" value={DEMO_DELEGATIONS.length} />
+        <MetricCard label="Valid Chains" value={valid} status="ALLOW" />
+        <MetricCard label="Scope Violations" value={violations} status={violations > 0 ? 'BLOCK' : 'ALLOW'} />
+        <MetricCard label="Max Chain Depth" value={`Lvl ${maxDepth}`} />
+      </div>
+
+      {/* Filter and Table */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <FilterBar
+          searchQuery={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search delegations by ID, agent, or reason..."
+          filters={[
+            {
+              key: 'status',
+              label: 'Status',
+              options: [
+                { label: 'All Statuses', value: 'ALL' },
+                { label: 'Valid Only', value: 'VALID' },
+                { label: 'Violations Only', value: 'VIOLATION' },
+              ],
+              value: statusFilter,
+              onChange: setStatusFilter,
+            },
+          ]}
+          activeCount={statusFilter !== 'ALL' || search ? 1 : 0}
+          onReset={() => {
+            setSearch('');
+            setStatusFilter('ALL');
+          }}
+        />
+
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyField="delegation_id"
+          onRowClick={(row) => setSelectedDelegation(row)}
+          emptyMessage="No delegation records matched your filter criteria."
+        />
+      </div>
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        isOpen={!!selectedDelegation}
+        onClose={() => setSelectedDelegation(null)}
+        title={selectedDelegation ? `Delegation: ${selectedDelegation.delegation_id}` : ''}
+        subtitle={selectedDelegation ? `${selectedDelegation.from_agent} → ${selectedDelegation.to_agent}` : ''}
+        badge={selectedDelegation ? <StatusBadge status={selectedDelegation.valid ? 'ALLOW' : 'BLOCK'} /> : null}
+      >
+        {selectedDelegation && (
+          <div className="space-y-6">
+            {/* Status overview */}
+            <div className={`p-3.5 rounded-lg border text-xs ${
+              selectedDelegation.valid
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-red-50 border-red-200 text-red-900'
+            }`}>
+              <div className="font-semibold mb-1 flex items-center gap-1.5">
+                {selectedDelegation.valid ? <CheckCircle2 size={14} className="text-emerald-600" /> : <AlertTriangle size={14} className="text-red-600" />}
+                {selectedDelegation.valid ? 'Containment Proof Verified' : 'Containment Invariant Violation Detected'}
+              </div>
+              <p>{selectedDelegation.reason}</p>
             </div>
 
-            {/* Chain visual */}
-            <div className="flex items-center gap-2 text-sm mb-2">
-              <span className="font-mono text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{del.from_agent}</span>
-              <ArrowRight size={14} className="text-zinc-600" />
-              <span className="font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{del.to_agent}</span>
-            </div>
-
-            <p className="text-xs text-zinc-500 mb-2">{del.reason}</p>
-
-            {del.violation && (
-              <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded p-2 mb-2">
-                ⚠ {del.violation}
+            {selectedDelegation.violation && (
+              <div className="p-3 bg-red-50/50 border border-red-200 rounded-lg">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-red-700 mb-1">Violation Diagnostics</div>
+                <div className="text-xs font-mono text-red-800">{selectedDelegation.violation}</div>
               </div>
             )}
 
-            <div className="flex items-center gap-3 text-xs text-zinc-600">
-              <span>{new Date(del.created_at).toLocaleString()}</span>
-              {del.expires_at && <span>expires {new Date(del.expires_at).toLocaleString()}</span>}
-            </div>
-          </div>
-
-          <button onClick={() => setExpanded(!expanded)} className="text-zinc-600 hover:text-zinc-400 transition-colors flex-shrink-0">
-            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
-        </div>
-
-        {expanded && (
-          <div className="mt-3 pt-3 border-t border-zinc-800/50 grid grid-cols-2 gap-4">
+            {/* Path visualization */}
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Authority Granted</div>
-              <div className="flex flex-wrap gap-1">
-                {del.authority_granted.map(a => (
-                  <span key={a} className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                    del.authority_subset_of.includes(a) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                  }`}>{a}</span>
-                ))}
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Delegation Lineage</div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase font-mono">Delegator</div>
+                  <div className="font-mono text-sm font-semibold text-slate-800">{selectedDelegation.from_agent}</div>
+                </div>
+                <div className="text-center px-3">
+                  <span className="text-[10px] font-mono text-slate-500 block">depth {selectedDelegation.depth}</span>
+                  <ArrowRight size={16} className="text-slate-400 mx-auto" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase font-mono">Delegatee</div>
+                  <div className="font-mono text-sm font-semibold text-blue-700">{selectedDelegation.to_agent}</div>
+                </div>
               </div>
             </div>
+
+            {/* Scope Comparison */}
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Constraints</div>
-              <div className="flex flex-wrap gap-1">
-                {del.constraints.length > 0 ? del.constraints.map(c => (
-                  <span key={c} className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">{c}</span>
-                )) : <span className="text-xs text-zinc-600">None</span>}
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Granted vs Delegator Scope</div>
+              <div className="space-y-3">
+                <div className="bg-white border border-slate-200 rounded-lg p-3">
+                  <div className="text-[10px] text-slate-500 uppercase font-medium mb-1.5">Authority Requested & Granted</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedDelegation.authority_granted.map(a => {
+                      const isSubset = selectedDelegation.authority_subset_of.includes(a);
+                      return (
+                        <span
+                          key={a}
+                          className={`font-mono text-xs px-2 py-0.5 rounded border ${
+                            isSubset
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-red-50 text-red-800 border-red-300 font-bold'
+                          }`}
+                        >
+                          {a} {isSubset ? '✓' : '✗ [Out of scope]'}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-lg p-3">
+                  <div className="text-[10px] text-slate-500 uppercase font-medium mb-1.5">Delegator Baseline Authority</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedDelegation.authority_subset_of.map(a => (
+                      <span key={a} className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Constraints */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Attached Constraints</div>
+              {selectedDelegation.constraints.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedDelegation.constraints.map(c => (
+                    <span key={c} className="font-mono text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-slate-500 italic">No constraints attached</span>
+              )}
+            </div>
+
+            {/* Temporal metadata */}
+            <div className="border-t border-slate-200 pt-4 space-y-2 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Created At</span>
+                <span className="font-mono">{new Date(selectedDelegation.created_at).toUTCString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Expires At</span>
+                <span className="font-mono">{selectedDelegation.expires_at ? new Date(selectedDelegation.expires_at).toUTCString() : 'Never (Manual Revocation Required)'}</span>
               </div>
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-export default function DelegationsPage() {
-  const violations = DEMO_DELEGATIONS.filter(d => !d.valid).length;
-  const valid = DEMO_DELEGATIONS.filter(d => d.valid).length;
-
-  return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Share2 size={18} className="text-indigo-400" />
-            Delegations
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Authority delegation chains — each agent can only grant authority it possesses
-          </p>
-        </div>
-      </div>
-
-      {/* Core Invariant Banner */}
-      <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 flex items-start gap-2">
-        <Shield size={14} className="text-indigo-400 mt-0.5 flex-shrink-0" />
-        <div className="text-xs text-indigo-300">
-          <span className="font-semibold">Containment Invariant:</span> No agent can delegate authority it does not itself possess.
-          Delegation depth ≥ 3 triggers automatic HITL review.
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-zinc-700/30 bg-zinc-800/40 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Total Delegations</div>
-          <div className="text-2xl font-bold font-mono text-zinc-200">{DEMO_DELEGATIONS.length}</div>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Valid Chains</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">{valid}</div>
-        </div>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-center">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Violations Caught</div>
-          <div className="text-2xl font-bold font-mono text-red-400">{violations}</div>
-        </div>
-      </div>
-
-      {/* Delegation Cards */}
-      <div className="space-y-3">
-        {DEMO_DELEGATIONS.map(del => (
-          <DelegationCard key={del.delegation_id} del={del} />
-        ))}
-      </div>
+      </DetailDrawer>
     </div>
   );
 }

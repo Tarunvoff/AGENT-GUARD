@@ -1,154 +1,329 @@
 'use client';
 
-import { useState } from 'react';
-import { DEMO_AGENTS } from '@/data/demo';
-import type { Agent } from '@/types';
-import { DecisionBadge, TrustBadge, SeverityBadge, CapabilityPill, EmptyState, SectionHeader } from '@/components/ui/security';
-import { Users, Search, ChevronRight, Shield, Activity, AlertTriangle } from 'lucide-react';
-import Link from 'next/link';
-import { formatRelative } from '@/lib/colors';
+import React, { useState, useMemo } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { DataTable, Column } from '@/components/ui/DataTable';
+import { TrustBadge, SeverityBadge } from '@/components/ui/StatusBadge';
+import { DetailDrawer } from '@/components/ui/DetailDrawer';
+import { User, Shield, Key, Share2, Wrench, CheckCircle2, Lock, Activity } from 'lucide-react';
+
+interface AgentRecord {
+  agent_id: string;
+  name: string;
+  role: string;
+  status: 'ACTIVE' | 'QUARANTINED' | 'STANDBY';
+  trust_level: string;
+  authority_scope: string;
+  active_tasks: number;
+  tools_count: number;
+  risk_rating: string;
+  last_activity: string;
+  capabilities: string[];
+  parent_agent?: string;
+  allowed_resources: string[];
+}
+
+const DEMO_AGENTS: AgentRecord[] = [
+  {
+    agent_id: 'agt_orch001',
+    name: 'orchestrator-001',
+    role: 'Central Workflow Orchestrator',
+    status: 'ACTIVE',
+    trust_level: 'HIGH',
+    authority_scope: 'delegate, report_generation',
+    active_tasks: 2,
+    tools_count: 5,
+    risk_rating: 'LOW',
+    last_activity: '1 min ago',
+    capabilities: ['delegate', 'report_generation', 'task_dispatch'],
+    allowed_resources: ['task_queue', 'internal_docs', 'reporting_bucket'],
+  },
+  {
+    agent_id: 'agt_res002',
+    name: 'research-agent-001',
+    role: 'Market & Web Research Worker',
+    status: 'ACTIVE',
+    trust_level: 'MEDIUM',
+    authority_scope: 'public_search, sec_filings (read-only)',
+    active_tasks: 1,
+    tools_count: 3,
+    risk_rating: 'MEDIUM',
+    last_activity: '3 mins ago',
+    capabilities: ['public_search', 'sec_filings_read'],
+    parent_agent: 'orchestrator-001',
+    allowed_resources: ['public_web', 'sec_cache'],
+  },
+  {
+    agent_id: 'agt_ana003',
+    name: 'analysis-agent-001',
+    role: 'Financial Analytics & Metrics Agent',
+    status: 'ACTIVE',
+    trust_level: 'HIGH',
+    authority_scope: 'data_analysis, metrics_read',
+    active_tasks: 1,
+    tools_count: 4,
+    risk_rating: 'LOW',
+    last_activity: 'Just now',
+    capabilities: ['data_analysis', 'metrics_read', 'chart_render'],
+    parent_agent: 'orchestrator-001',
+    allowed_resources: ['finance_ledger', 'metrics_store'],
+  },
+  {
+    agent_id: 'agt_ext009',
+    name: 'external-mcp-agent',
+    role: 'Third-Party Ingestion Bot',
+    status: 'QUARANTINED',
+    trust_level: 'UNTRUSTED',
+    authority_scope: 'none (revoked by incident INC-1048)',
+    active_tasks: 0,
+    tools_count: 1,
+    risk_rating: 'CRITICAL',
+    last_activity: '45 mins ago',
+    capabilities: ['untrusted_ingest'],
+    allowed_resources: [],
+  },
+];
 
 export default function AgentsPage() {
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<string>('all');
+  const [trustFilter, setTrustFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(DEMO_AGENTS[0]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const agents = DEMO_AGENTS.filter(a => {
-    const matchSearch = a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.agent_id.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'all' || a.trust_level === filter || a.status === filter;
-    return matchSearch && matchFilter;
-  });
+  const filteredData = useMemo(() => {
+    return DEMO_AGENTS.filter((item) => {
+      if (search) {
+        const q = search.toLowerCase();
+        const match =
+          item.agent_id.toLowerCase().includes(q) ||
+          item.name.toLowerCase().includes(q) ||
+          item.role.toLowerCase().includes(q) ||
+          item.authority_scope.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      if (trustFilter !== 'ALL' && item.trust_level !== trustFilter) return false;
+      if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
+      return true;
+    });
+  }, [search, trustFilter, statusFilter]);
 
-  return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#090d16]">
-      <div className="flex items-center justify-between">
+  const columns: Column<AgentRecord>[] = [
+    {
+      key: 'name',
+      header: 'Agent Identity',
+      render: (row) => (
         <div>
-          <h1 className="text-xl font-bold text-white">Agent Inventory</h1>
-          <p className="text-sm text-zinc-500 mt-1">Identity, authority, and trust level for all registered agents</p>
+          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+            <span>{row.name}</span>
+          </div>
+          <div className="font-mono text-[10px] text-slate-400">{row.agent_id}</div>
         </div>
-        <div className="text-sm text-zinc-500">
-          <span className="text-zinc-200 font-semibold">{DEMO_AGENTS.length}</span> agents registered
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search agents..."
-            className="w-full pl-7 pr-3 py-1.5 text-xs bg-zinc-900/60 border border-zinc-800/50 rounded-md text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/50"
-          />
-        </div>
-        {['all', 'high', 'medium', 'low', 'untrusted'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-2.5 py-1 text-[11px] rounded-md font-medium uppercase tracking-wider transition-colors ${
-              filter === f
-                ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-
-      {/* Agent grid */}
-      <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-        {agents.map(agent => (
-          <AgentCard key={agent.agent_id} agent={agent} />
-        ))}
-      </div>
-
-      {agents.length === 0 && (
-        <EmptyState
-          icon={Users}
-          title="No agents found"
-          description="No agents match your current search and filter criteria."
-        />
-      )}
-    </div>
-  );
-}
-
-function AgentCard({ agent }: { agent: Agent }) {
-  const statusColor = {
-    active: 'bg-emerald-400',
-    idle: 'bg-zinc-500',
-    delegated: 'bg-sky-400',
-    blocked: 'bg-red-400',
-  }[agent.status];
-
-  const isCritical = agent.risk_level === 'CRITICAL';
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: '120px',
+      render: (row) => (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+            row.status === 'ACTIVE'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${row.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-red-600'}`} />
+          {row.status}
+        </span>
+      ),
+    },
+    {
+      key: 'trust_level',
+      header: 'Trust Level',
+      width: '110px',
+      render: (row) => <TrustBadge trust={row.trust_level} />,
+    },
+    {
+      key: 'authority_scope',
+      header: 'Declared Authority Scope',
+      render: (row) => <span className="font-mono text-[11px] text-slate-600">{row.authority_scope}</span>,
+    },
+    {
+      key: 'active_tasks',
+      header: 'Tasks',
+      align: 'center',
+      width: '70px',
+      render: (row) => <span className="font-mono font-semibold text-slate-800">{row.active_tasks}</span>,
+    },
+    {
+      key: 'tools_count',
+      header: 'Tools',
+      align: 'center',
+      width: '70px',
+      render: (row) => <span className="font-mono text-slate-600">{row.tools_count}</span>,
+    },
+    {
+      key: 'risk_rating',
+      header: 'Risk',
+      width: '90px',
+      render: (row) => <SeverityBadge severity={row.risk_rating} />,
+    },
+    {
+      key: 'last_activity',
+      header: 'Last Activity',
+      align: 'right',
+      width: '110px',
+      render: (row) => <span className="text-slate-400 text-[11px]">{row.last_activity}</span>,
+    },
+  ];
 
   return (
-    <Link href={`/agents/${agent.agent_id}`}>
-      <div className={`
-        rounded-xl border p-4 bg-zinc-900/40 cursor-pointer
-        transition-all duration-200 hover:border-zinc-700/60 hover:bg-zinc-900/60 group
-        ${isCritical ? 'border-red-500/30 shadow-lg shadow-red-500/5' : 'border-zinc-800/50'}
-      `}>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/20 flex items-center justify-center text-xs font-bold text-sky-300">
-              {agent.name.charAt(0)}
+    <div className="max-w-[1600px] mx-auto">
+      <PageHeader
+        title="Agents"
+        description="Catalog of registered autonomous agents, cryptographic identities, delegated authority scopes, and continuous behavioral baselines."
+        breadcrumbs={[
+          { label: 'Operations', href: '/dashboard' },
+          { label: 'Agents' },
+        ]}
+      />
+
+      <FilterBar
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search agents by ID, name, capability…"
+        totalCount={DEMO_AGENTS.length}
+        activeCount={filteredData.length}
+        onReset={() => {
+          setSearch('');
+          setTrustFilter('ALL');
+          setStatusFilter('ALL');
+        }}
+        dropdowns={[
+          {
+            name: 'trust',
+            label: 'Trust',
+            value: trustFilter,
+            onChange: setTrustFilter,
+            options: [
+              { label: 'All Trust Levels', value: 'ALL' },
+              { label: 'HIGH', value: 'HIGH' },
+              { label: 'MEDIUM', value: 'MEDIUM' },
+              { label: 'UNTRUSTED', value: 'UNTRUSTED' },
+            ],
+          },
+          {
+            name: 'status',
+            label: 'Status',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: [
+              { label: 'All Statuses', value: 'ALL' },
+              { label: 'ACTIVE', value: 'ACTIVE' },
+              { label: 'QUARANTINED', value: 'QUARANTINED' },
+            ],
+          },
+        ]}
+      />
+
+      <DataTable
+        columns={columns}
+        data={filteredData}
+        keyExtractor={(item) => item.agent_id}
+        onRowClick={(item) => {
+          setSelectedAgent(item);
+          setIsDrawerOpen(true);
+        }}
+        selectedKey={selectedAgent?.agent_id}
+      />
+
+      {/* Agent Detail Drawer */}
+      <DetailDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        title={`Agent: ${selectedAgent?.name}`}
+        subtitle={selectedAgent?.agent_id}
+        badge={selectedAgent && <TrustBadge trust={selectedAgent.trust_level} />}
+      >
+        {selectedAgent && (
+          <div className="space-y-5 text-xs">
+            {/* Metadata Summary */}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">STATUS</span>
+                <span className="font-semibold text-slate-900">{selectedAgent.status}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">ROLE</span>
+                <span className="text-slate-700">{selectedAgent.role}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">PARENT AGENT</span>
+                <span className="font-mono text-slate-800">{selectedAgent.parent_agent || 'Root (None)'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">RISK POSTURE</span>
+                <SeverityBadge severity={selectedAgent.risk_rating} />
+              </div>
             </div>
+
+            {/* Declared Capabilities */}
             <div>
-              <div className="text-sm font-semibold text-zinc-200 group-hover:text-white">{agent.name}</div>
-              <div className="text-[10px] font-mono text-zinc-600">{agent.agent_id}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                <Key size={13} className="text-slate-400" />
+                <span>Declared Capabilities</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedAgent.capabilities.map((cap) => (
+                  <span key={cap} className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-800 font-mono text-[11px] rounded">
+                    {cap}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${statusColor}`} />
-            <span className="text-[10px] text-zinc-500 capitalize">{agent.status}</span>
-          </div>
-        </div>
 
-        {/* Trust + Risk */}
-        <div className="flex items-center gap-2 mb-3">
-          <TrustBadge level={agent.trust_level} />
-          {agent.risk_level && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase ${
-              agent.risk_level === 'CRITICAL' ? 'border-red-500/30 bg-red-500/10 text-red-400' :
-              agent.risk_level === 'HIGH' ? 'border-orange-500/30 bg-orange-500/10 text-orange-400' :
-              'border-zinc-700 bg-zinc-800/40 text-zinc-500'
-            }`}>
-              {agent.risk_level}
-            </span>
-          )}
-        </div>
+            {/* Accessible Resources */}
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                <Lock size={13} className="text-slate-400" />
+                <span>Reachable Resources</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
+                {selectedAgent.allowed_resources.length > 0 ? (
+                  selectedAgent.allowed_resources.map((res) => (
+                    <div key={res} className="flex items-center gap-1.5 text-slate-700 font-mono text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>{res}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-slate-400 italic">No resources accessible</span>
+                )}
+              </div>
+            </div>
 
-        {/* Capabilities */}
-        <div className="mb-3">
-          <div className="text-[10px] text-zinc-600 mb-1.5 uppercase tracking-wider">Capabilities</div>
-          <div className="flex flex-wrap gap-1">
-            {agent.capabilities.length > 0
-              ? agent.capabilities.map(cap => <CapabilityPill key={cap} name={cap} />)
-              : <span className="text-[10px] text-zinc-700 italic">No capabilities</span>
-            }
-          </div>
-        </div>
-
-        {/* Task */}
-        {agent.current_task_id && (
-          <div className="pt-2.5 border-t border-zinc-800/40">
-            <div className="text-[10px] text-zinc-600 flex items-center gap-1">
-              <Activity size={9} />
-              Current task: <span className="font-mono text-zinc-500">{agent.current_task_id}</span>
+            {/* Behavioral Baseline */}
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                <Activity size={13} className="text-slate-400" />
+                <span>Behavioral Baseline</span>
+              </div>
+              <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-1.5">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500">Anomaly Rate</span>
+                  <span className="font-mono font-bold text-emerald-700">0.0% (Stable)</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500">Entropy Score</span>
+                  <span className="font-mono text-slate-800">1.21 / 5.0</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
-
-        <div className="flex items-center justify-end mt-2 text-[10px] text-zinc-700 group-hover:text-zinc-500">
-          View profile <ChevronRight size={10} className="ml-0.5" />
-        </div>
-      </div>
-    </Link>
+      </DetailDrawer>
+    </div>
   );
 }

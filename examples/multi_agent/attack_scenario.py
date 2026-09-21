@@ -16,13 +16,13 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 import uuid
 
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction
-from agentguard.risk.models import RiskFactorBreakdown
-from agentguard.tracing.events import EventType
-from agentguard.tracing.tracer import CausalGraph
+from actshield.client import AgentGuard
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction
+from actshield.risk.models import RiskFactorBreakdown
+from actshield.tracing.events import EventType
+from actshield.tracing.tracer import CausalGraph
 from examples.multi_agent.agents import setup_agents
 from examples.multi_agent.enterprise_data import EnterpriseFinancialWarehouse
 from examples.multi_agent.mcp_server import MCPMode, SimulatedMCPServer

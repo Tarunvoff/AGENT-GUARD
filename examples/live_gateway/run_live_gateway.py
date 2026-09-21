@@ -17,17 +17,17 @@ _repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction, SecurityDecision
-from agentguard.gateway.mcp import MCPGateway, MCPMessage
-from agentguard.integrations.ai_secura import AISecuraClient, SecurityContext
-from agentguard.integrations.apiris import APIRISClient
-from agentguard.persistence.siem import SIEMExporter
-from agentguard.persistence.storage import SQLiteStorage
-from agentguard.risk.models import RiskLevel
-from agentguard.tools.tool import SensitivityLevel
+from actshield.client import AgentGuard
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction, SecurityDecision
+from actshield.gateway.mcp import MCPGateway, MCPMessage
+from actshield.integrations.ai_secura import AISecuraClient, SecurityContext
+from actshield.integrations.apiris import APIRISClient
+from actshield.persistence.siem import SIEMExporter
+from actshield.persistence.storage import SQLiteStorage
+from actshield.risk.models import RiskLevel
+from actshield.tools.tool import SensitivityLevel
 
 
 def main():

@@ -15,14 +15,14 @@ import pathlib
 import sys
 import time
 
-from agentguard.client import AgentGuard
-from agentguard.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
-from agentguard.offensive.campaign import AttackCampaign, CampaignSummary
-from agentguard.offensive.corpus import attack_corpus
-from agentguard.offensive.engine import OffensiveEngine
-from agentguard.offensive.results import AttackStatus
-from agentguard.offensive.target import target_registry
-from agentguard.offensive.vulnerable_target import VulnerableDemoTarget
+from actshield.client import AgentGuard
+from actshield.offensive.attack import AttackCase, AttackType, ExpectedBehavior, SafetyClass
+from actshield.offensive.campaign import AttackCampaign, CampaignSummary
+from actshield.offensive.corpus import attack_corpus
+from actshield.offensive.engine import OffensiveEngine
+from actshield.offensive.results import AttackStatus
+from actshield.offensive.target import target_registry
+from actshield.offensive.vulnerable_target import VulnerableDemoTarget
 
 
 def print_banner(title: str):
@@ -46,7 +46,7 @@ def main():
     all_attacks = attack_corpus.generate_full_family_corpus(target)
     # Ensure at least 25 attacks
     while len(all_attacks) < 25:
-        from agentguard.offensive.mutation import MutationEngine, MutationStrategy
+        from actshield.offensive.mutation import MutationEngine, MutationStrategy
         extra = MutationEngine.mutate(all_attacks[0], MutationStrategy.WORDING_VARIATION, count=5)
         all_attacks.extend(extra)
 

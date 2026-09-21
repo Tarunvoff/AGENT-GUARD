@@ -10,7 +10,7 @@ _repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
-from agentguard.client import AgentGuard
+from actshield.client import AgentGuard
 from examples.multi_agent.attack_scenario import run_attack_scenario
 
 

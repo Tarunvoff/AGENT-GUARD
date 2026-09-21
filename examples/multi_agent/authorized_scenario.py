@@ -10,11 +10,11 @@ Demonstrates:
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
-from agentguard.agents.identity import AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.tracing.tracer import CausalGraph
+from actshield.agents.identity import AgentTrustLevel
+from actshield.client import AgentGuard
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.tracing.tracer import CausalGraph
 from examples.multi_agent.enterprise_data import EnterpriseFinancialWarehouse
 from examples.multi_agent.mcp_server import SimulatedMCPServer
 from examples.multi_agent.tools import EnterpriseToolSuite

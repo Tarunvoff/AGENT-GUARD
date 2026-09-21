@@ -9,9 +9,9 @@ import time
 root = pathlib.Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(root / "sdk"))
 
-from agentguard.offensive.adaptive import AdaptiveEngine, CampaignMemory
-from agentguard.offensive.vulnerable_target import VulnerableDemoTarget
-from agentguard.offensive.attack import AttackCase, ExpectedBehavior
+from actshield.offensive.adaptive import AdaptiveEngine, CampaignMemory
+from actshield.offensive.vulnerable_target import VulnerableDemoTarget
+from actshield.offensive.attack import AttackCase, ExpectedBehavior
 
 
 def run_phase5_demo():

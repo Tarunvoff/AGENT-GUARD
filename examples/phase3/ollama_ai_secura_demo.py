@@ -26,18 +26,18 @@ import os
 import sys
 import time
 
-from agentguard.llm_config import LLMConfig
-from agentguard.integrations.ai_secura import SecurityContext
-from agentguard.integrations.ai_secura_analysis import (
+from actshield.llm_config import LLMConfig
+from actshield.integrations.ai_secura import SecurityContext
+from actshield.integrations.ai_secura_analysis import (
     AISecuraAnalysis,
     ThreatSeverity,
     IntentAlignment,
     AIRecommendation,
 )
-from agentguard.integrations.ollama_adapter import OllamaAISecuraAdapter
-from agentguard.policy.evaluator import PolicyEvaluator
-from agentguard.policy.policy import Policy, PolicyRule
-from agentguard.decisions.decision import DecisionAction, SecurityDecision
+from actshield.integrations.ollama_adapter import OllamaAISecuraAdapter
+from actshield.policy.evaluator import PolicyEvaluator
+from actshield.policy.policy import Policy, PolicyRule
+from actshield.decisions.decision import DecisionAction, SecurityDecision
 
 
 def print_banner(title: str):
@@ -258,7 +258,7 @@ def main():
     health = adapter.health_check()
     print(f"Ollama Health Check: reachable={health['ollama_reachable']}, model_exists={health['model_exists']}, responds={health['model_responds']}")
 
-    from agentguard.client import AgentGuard
+    from actshield.client import AgentGuard
     guard = AgentGuard()
     evaluator = guard.policy_evaluator
 

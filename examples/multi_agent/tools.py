@@ -1,8 +1,8 @@
 """AgentGuard-protected tool implementations across sensitivity levels."""
 
 from typing import Any, Callable, Dict, List, Optional
-from agentguard.client import AgentGuard
-from agentguard.tools.tool import Resource, SensitivityLevel
+from actshield.client import AgentGuard
+from actshield.tools.tool import Resource, SensitivityLevel
 from examples.multi_agent.enterprise_data import EnterpriseFinancialWarehouse
 from examples.multi_agent.mcp_server import MCPMode, SimulatedMCPServer
 

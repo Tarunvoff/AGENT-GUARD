@@ -26,23 +26,23 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "sdk"))
 
-from agentguard.agents.agent import Agent
-from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.config import AgentGuardConfig
-from agentguard.context.context import Context
-from agentguard.context.provenance import ContextSource, Provenance
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction
-from agentguard.delegation.authority import AuthorityGrant
-from agentguard.delegation.delegation import Delegation
-from agentguard.forensics.service import ForensicService
-from agentguard.forensics.models import ForensicIncident, IncidentType, IncidentSeverity, AccessDecision
-from agentguard.api.service import ApiService
-from agentguard.api.models import PolicyEvaluateRequest
-from agentguard.tracing.correlation import generate_id
-from agentguard.tools.tool import Resource, SensitivityLevel, ToolDefinition, ToolRequest
-from agentguard.tracing.correlation import CorrelationContext
+from actshield.agents.agent import Agent
+from actshield.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
+from actshield.client import AgentGuard
+from actshield.config import AgentGuardConfig
+from actshield.context.context import Context
+from actshield.context.provenance import ContextSource, Provenance
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction
+from actshield.delegation.authority import AuthorityGrant
+from actshield.delegation.delegation import Delegation
+from actshield.forensics.service import ForensicService
+from actshield.forensics.models import ForensicIncident, IncidentType, IncidentSeverity, AccessDecision
+from actshield.api.service import ApiService
+from actshield.api.models import PolicyEvaluateRequest
+from actshield.tracing.correlation import generate_id
+from actshield.tools.tool import Resource, SensitivityLevel, ToolDefinition, ToolRequest
+from actshield.tracing.correlation import CorrelationContext
 
 
 # ---------------------------------------------------------------------------

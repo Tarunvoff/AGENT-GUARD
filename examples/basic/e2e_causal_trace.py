@@ -12,7 +12,7 @@ This script demonstrates:
 """
 
 import json
-from agentguard import (
+from actshield import (
     AgentGuard,
     AgentTrustLevel,
     ContextSource,

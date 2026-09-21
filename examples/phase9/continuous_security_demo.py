@@ -45,13 +45,13 @@ if str(SDK_PATH) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
-from agentguard.client import AgentGuard
-from agentguard.config import AgentGuardConfig
-from agentguard.context.provenance import ContextSource
-from agentguard.context.taint import TaintState
-from agentguard.decisions.decision import DecisionAction
-from agentguard.drift import (
+from actshield.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
+from actshield.client import AgentGuard
+from actshield.config import AgentGuardConfig
+from actshield.context.provenance import ContextSource
+from actshield.context.taint import TaintState
+from actshield.decisions.decision import DecisionAction
+from actshield.drift import (
     AccessDriftDetector,
     AuthorityDriftDetector,
     BehavioralBaselineTracker,
@@ -59,8 +59,8 @@ from agentguard.drift import (
     DriftCategory,
     DriftSeverity,
 )
-from agentguard.gates import GateStatus, SecurityGateEvaluator, SecurityGateResult
-from agentguard.incidents import (
+from actshield.gates import GateStatus, SecurityGateEvaluator, SecurityGateResult
+from actshield.incidents import (
     IncidentCreationRule,
     IncidentEngine,
     IncidentSeverity,
@@ -68,9 +68,9 @@ from agentguard.incidents import (
     IncidentStateMachine,
     SecurityIncident,
 )
-from agentguard.offensive.corpus import AttackCorpus
-from agentguard.offensive.engine import OffensiveEngine
-from agentguard.posture import (
+from actshield.offensive.corpus import AttackCorpus
+from actshield.offensive.engine import OffensiveEngine
+from actshield.posture import (
     FindingSeverity,
     PostureDiffEngine,
     PostureDimensionMetrics,
@@ -79,8 +79,8 @@ from agentguard.posture import (
     PostureRating,
     SecurityPostureSnapshot,
 )
-from agentguard.response import ResponseActionType, ResponseEngine
-from agentguard.tools.tool import Resource, SensitivityLevel, ToolDefinition, ToolRequest
+from actshield.response import ResponseActionType, ResponseEngine
+from actshield.tools.tool import Resource, SensitivityLevel, ToolDefinition, ToolRequest
 
 
 def banner(title: str) -> None:

@@ -1,9 +1,9 @@
 """Multi-agent setup with distinct authority boundaries."""
 
 from typing import Tuple
-from agentguard.agents.agent import Agent
-from agentguard.agents.identity import AgentTrustLevel
-from agentguard.client import AgentGuard
+from actshield.agents.agent import Agent
+from actshield.agents.identity import AgentTrustLevel
+from actshield.client import AgentGuard
 
 
 def setup_agents(guard: AgentGuard) -> Tuple[Agent, Agent, Agent, Agent]:

@@ -72,6 +72,62 @@ class SecurityAIProvider(ABC):
         """Model identifier used by this provider."""
 
     @property
+    def name(self) -> str:
+        """Alias for provider_name."""
+        return self.provider_name
+
+    @property
+    def provider_type(self) -> str:
+        """Provider taxonomy type (e.g. 'local_llm', 'cloud_llm', 'deterministic')."""
+        return getattr(self, "_provider_type", "llm")
+
+    def reason_sync(
+        self,
+        task_intent: str,
+        tool_name: str,
+        tool_params: Dict[str, Any],
+        agent_role: str = "agent",
+        caller_trust: str = "medium",
+    ) -> Any:
+        """Advisory reasoning helper."""
+        packet = {
+            "task_intent": task_intent,
+            "tool_name": tool_name,
+            "tool_params": tool_params,
+            "agent_role": agent_role,
+            "caller_trust": caller_trust,
+        }
+        res = self.analyze(packet)
+        from dataclasses import make_dataclass
+        SimpleReasoning = make_dataclass(
+            "SimpleReasoning",
+            [
+                ("threat_severity", str),
+                ("intent_alignment", str),
+                ("recommendation", str),
+                ("confidence", float),
+                ("explanation", str),
+            ]
+        )
+        if res:
+            sev = "HIGH" if res.is_high_risk else ("MEDIUM" if res.risk_score > 0.4 else "LOW")
+            rec = "BLOCK" if res.is_high_risk else "ALLOW"
+            return SimpleReasoning(
+                threat_severity=sev,
+                intent_alignment="ALIGNED" if not res.is_high_risk else "DEVIATED",
+                recommendation=rec,
+                confidence=res.confidence,
+                explanation="; ".join(res.threat_indicators) if res.threat_indicators else "Evaluated by AI provider",
+            )
+        return SimpleReasoning(
+            threat_severity="LOW",
+            intent_alignment="ALIGNED",
+            recommendation="ALLOW",
+            confidence=1.0,
+            explanation="Deterministic baseline policy authoritative",
+        )
+
+    @property
     @abstractmethod
     def is_available(self) -> bool:
         """

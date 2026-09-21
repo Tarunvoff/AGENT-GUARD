@@ -63,6 +63,41 @@ class ProviderRegistry:
                 return p
         return None
 
+    def get_active_provider(self) -> SecurityAIProvider:
+        """Return active provider or NullProvider."""
+        active = self.get_active()
+        if active:
+            return active
+        from agentguard.providers.null_provider import NullProvider
+        return NullProvider()
+
+    def set_active_provider(self, name: str) -> None:
+        """Move named provider to top of priority chain."""
+        norm_name = name.lower().replace("-", "_")
+        found = None
+        for p in self._providers:
+            if p.provider_name.lower().replace("-", "_") == norm_name:
+                found = p
+                break
+        if not found:
+            raise ValueError(f"Provider '{name}' not found in registry.")
+        self._providers.remove(found)
+        self._providers.insert(0, found)
+
+    def list_providers(self) -> List[Dict[str, Any]]:
+        """List all registered providers with status."""
+        active = self.get_active_provider()
+        res = []
+        for p in self._providers:
+            is_act = p.provider_name == active.provider_name
+            res.append({
+                "name": p.provider_name,
+                "provider_type": getattr(p, "provider_type", "llm"),
+                "is_healthy": p.is_available,
+                "is_active": is_act,
+            })
+        return res
+
     def analyze(self, packet: Dict[str, Any]) -> Optional[AnalysisResult]:
         """
         Try each provider in order. Returns first successful AnalysisResult.
@@ -198,3 +233,8 @@ def reset_default_registry() -> None:
     """Reset the default registry (useful in tests)."""
     global _default_registry
     _default_registry = None
+
+
+# Alias for clean public SDK naming
+get_provider_registry = get_default_registry
+

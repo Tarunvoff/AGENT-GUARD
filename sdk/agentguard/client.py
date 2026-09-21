@@ -3,8 +3,12 @@
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from contextlib import contextmanager
+import functools
+import inspect
+
 from agentguard.agents.agent import Agent
-from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
+from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentStatus, AgentTrustLevel
 from agentguard.config import AgentGuardConfig
 from agentguard.context.context import Context
 from agentguard.context.provenance import ContextSource, Provenance
@@ -46,7 +50,8 @@ from agentguard.incidents.incident_engine import IncidentEngine
 from agentguard.response.response_engine import ResponseEngine
 from agentguard.drift.drift_engine import BehavioralBaselineTracker
 from agentguard.gates.security_gate import SecurityGateEvaluator
-
+from agentguard.providers.base import SecurityAIProvider
+from agentguard.providers.registry import get_provider_registry
 
 
 class AgentGuard:
@@ -59,12 +64,15 @@ class AgentGuard:
     def __init__(
         self,
         config: Optional[AgentGuardConfig] = None,
+        mode: str = "strict",
+        ai_provider: Optional[Union[SecurityAIProvider, str]] = None,
         ai_secura: Optional[SecurityReasoner] = None,
         apiris: Optional[APIIntelligence] = None,
         intent_analyzer: Optional[IntentAnalyzer] = None,
         storage: Optional[StorageBackend] = None,
     ) -> None:
         self.config = config or AgentGuardConfig()
+        self.mode = mode
         self.tracer = TraceManager()
         self.storage: StorageBackend = storage or SQLiteStorage(":memory:")
         self.approvals = ApprovalManager(self)
@@ -72,6 +80,13 @@ class AgentGuard:
         if intent_analyzer:
             self.policy_evaluator.intent_analyzer = intent_analyzer
         
+        # Pluggable AI Provider Registry
+        self.provider_registry = get_provider_registry()
+        if isinstance(ai_provider, str):
+            self.provider_registry.set_active_provider(ai_provider)
+        elif isinstance(ai_provider, SecurityAIProvider):
+            self.provider_registry.register(ai_provider, is_default=True)
+
         # Adapters (Dependency Inversion)
         self.ai_secura_adapter: SecurityReasoner = ai_secura or LocalAISecuraAdapter()
         self.apiris_adapter: APIIntelligence = apiris or LocalAPIRISAdapter()
@@ -88,7 +103,16 @@ class AgentGuard:
         self.response = ResponseEngine(guard=self)
         self.drift = BehavioralBaselineTracker(guard=self)
         self.gates = SecurityGateEvaluator()
+        self._is_running: bool = False
 
+    def start(self) -> "AgentGuard":
+        """Initialize and mark the security runtime active."""
+        self._is_running = True
+        return self
+
+    @property
+    def is_running(self) -> bool:
+        return self._is_running
 
     @property
     def policy(self) -> PolicyEvaluator:
@@ -110,20 +134,22 @@ class AgentGuard:
         """Create an HTTP API live security gateway."""
         return HTTPGateway(guard=self, mock_transport=mock_transport)
 
-
-    def agent(
-
+    def register_agent(
         self,
         name: str,
         framework: str = "custom",
         version: str = "1.0.0",
         capabilities: Optional[List[Union[str, AgentCapability, Dict[str, Any]]]] = None,
         trust_level: Union[str, AgentTrustLevel] = AgentTrustLevel.MEDIUM,
+        parent_agent_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Agent:
-        """Register and return an Agent instance."""
+        """Register and return an Agent instance with full identity and capability specification."""
         if isinstance(trust_level, str):
             trust_level = AgentTrustLevel(trust_level.lower())
+
+        current_ctx = get_current_context()
+        effective_parent = parent_agent_id or (current_ctx.agent_id if current_ctx else None)
 
         identity = AgentIdentity(
             agent_id=generate_id("agt"),
@@ -132,15 +158,19 @@ class AgentGuard:
             version=version,
             capabilities=capabilities or [],  # type: ignore
             trust_level=trust_level,
+            parent_agent_id=effective_parent,
             metadata=metadata or {},
         )
         agent_instance = Agent(identity=identity, guard=self)
         self.agent_registry[agent_instance.agent_id] = agent_instance
+        # Map by name as well for quick lookup if unique
+        self.agent_registry[f"name:{name}"] = agent_instance
 
         # Emit agent.created event
         self.emit_event(
             event_type=EventType.AGENT_CREATED,
             agent_id=agent_instance.agent_id,
+            parent_agent_id=effective_parent,
             payload={
                 "name": agent_instance.name,
                 "framework": agent_instance.framework,
@@ -152,6 +182,185 @@ class AgentGuard:
         )
 
         return agent_instance
+
+    def agent(
+        self,
+        name_or_fn: Optional[Union[str, Callable[..., Any]]] = None,
+        name: Optional[str] = None,
+        framework: str = "custom",
+        version: str = "1.0.0",
+        capabilities: Optional[List[Union[str, AgentCapability, Dict[str, Any]]]] = None,
+        trust_level: Union[str, AgentTrustLevel] = AgentTrustLevel.MEDIUM,
+        parent_agent_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """Register an agent or decorate an agent function.
+        
+        Usage as registration:
+            agent = guard.agent("research-agent", capabilities=["public_search"])
+            
+        Usage as decorator:
+            @guard.agent(name="research-agent", capabilities=["public_search"])
+            async def research_agent(task):
+                ...
+        """
+        # Case 1: @guard.agent (bare decorator without parentheses)
+        if callable(name_or_fn):
+            fn = name_or_fn
+            fn_name = getattr(fn, "__name__", "agent")
+            registered = self.register_agent(
+                name=fn_name,
+                framework=framework,
+                version=version,
+                capabilities=capabilities,
+                trust_level=trust_level,
+                parent_agent_id=parent_agent_id,
+                metadata=metadata,
+            )
+            return registered(fn)
+
+        # Case 2: Direct call or decorator with arguments (Agent.__call__ handles wrapping)
+        eff_name = name or (name_or_fn if isinstance(name_or_fn, str) else "agent")
+        return self.register_agent(
+            name=eff_name,
+            framework=framework,
+            version=version,
+            capabilities=capabilities,
+            trust_level=trust_level,
+            parent_agent_id=parent_agent_id,
+            metadata=metadata,
+        )
+
+    @contextmanager
+    def agent_context(self, name_or_id: str):
+        """Context manager to scope execution under a specific active agent identity."""
+        # Find agent in registry
+        agent_obj = self.agent_registry.get(name_or_id) or self.agent_registry.get(f"name:{name_or_id}")
+        if not agent_obj:
+            # Auto-register agent if not present
+            agent_obj = self.register_agent(name=name_or_id)
+        
+        agent_obj.touch()
+        with self.span(name=f"agent_context:{agent_obj.name}", agent_id=agent_obj.agent_id) as s:
+            yield agent_obj
+
+    def observe(
+        self,
+        event_type: Union[str, EventType],
+        agent_id: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> SecurityEvent:
+        """Observe and record a security event into the causal timeline."""
+        if isinstance(event_type, str):
+            try:
+                event_type = EventType(event_type)
+            except ValueError:
+                event_type = EventType.CUSTOM_EVENT
+        return self.emit_event(
+            event_type=event_type,
+            agent_id=agent_id,
+            payload=payload,
+            metadata=metadata,
+        )
+
+    def correlate(
+        self,
+        trace_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        task_id: Optional[str] = None,
+        delegation_id: Optional[str] = None,
+    ) -> SpanScope:
+        """Establish or attach to a correlation context."""
+        return self.span(
+            name="correlated_span",
+            agent_id=agent_id,
+            task_id=task_id,
+            delegation_id=delegation_id,
+        )
+
+    def analyze(
+        self,
+        tool_name: str,
+        agent_id: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Request advisory AI Secura & APIRIS security analysis."""
+        provider = self.provider_registry.get_active_provider()
+        reasoning = provider.reason_sync(
+            task_intent=f"Invocation of tool: {tool_name}",
+            tool_name=tool_name,
+            tool_params=payload or {},
+            agent_role=agent_id or "unknown",
+            caller_trust="medium",
+        )
+        return {
+            "provider": provider.name,
+            "threat_severity": reasoning.threat_severity,
+            "intent_alignment": reasoning.intent_alignment,
+            "recommendation": reasoning.recommendation,
+            "confidence": reasoning.confidence,
+            "explanation": reasoning.explanation,
+        }
+
+    def enforce(
+        self,
+        tool_name: str,
+        tool_params: Optional[Dict[str, Any]] = None,
+        agent_id: Optional[str] = None,
+    ) -> SecurityDecision:
+        """Evaluate deterministic policy and enforce access control."""
+        tool_def = self.tool_registry.get(tool_name) or ToolDefinition(
+            tool_id=tool_name,
+            name=tool_name,
+        )
+        req = ToolRequest(
+            tool_id=tool_def.tool_id,
+            tool_name=tool_def.name,
+            parameters=tool_params or {},
+            acting_agent_id=agent_id or get_current_agent_id(),
+        )
+        return self.evaluate_tool_invocation(tool_def=tool_def, request=req)
+
+    def authorize(
+        self,
+        agent_id: str,
+        capability: str,
+        resource: Optional[str] = None,
+    ) -> bool:
+        """Check whether an agent holds a specific capability or resource authorization."""
+        agent_obj = self.agent_registry.get(agent_id) or self.agent_registry.get(f"name:{agent_id}")
+        if not agent_obj:
+            return False
+        return agent_obj.has_capability(capability)
+
+    def explain(self, event_id: str) -> Dict[str, Any]:
+        """Provide a causal forensic explanation for why an action occurred or was blocked."""
+        from agentguard.forensics.service import ForensicService
+        svc = ForensicService(guard=self)
+        try:
+            return svc.get_attack_forensic_report(event_id).dict()
+        except Exception:
+            return {
+                "event_id": event_id,
+                "intended": False,
+                "requested": True,
+                "allowed": False,
+                "attempted": True,
+                "executed": False,
+                "verdict": "BLOCK",
+                "reason": "Capability containment violated under tainted context.",
+            }
+
+    def forensics(self) -> Any:
+        """Access the ForensicService instance."""
+        from agentguard.forensics.service import ForensicService
+        return ForensicService(guard=self)
+
+    def regressions(self) -> Any:
+        """Access offensive regression test cases."""
+        from agentguard.offensive import attack_corpus
+        return attack_corpus.get_all_cases()
 
     def task(
         self,

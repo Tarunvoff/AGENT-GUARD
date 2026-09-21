@@ -15,6 +15,17 @@ class AgentTrustLevel(str, Enum):
     UNTRUSTED = "untrusted"
 
 
+class AgentStatus(str, Enum):
+    """Standardized agent operational and security lifecycle statuses."""
+    STARTING = "starting"
+    ACTIVE = "active"
+    IDLE = "idle"
+    BLOCKED = "blocked"
+    QUARANTINED = "quarantined"
+    REVOKED = "revoked"
+    OFFLINE = "offline"
+
+
 class AgentCapability(BaseModel):
     """Specific permission or functional capability possessed or granted to an agent."""
     name: str = Field(..., description="Canonical capability name (e.g., 'public_search', 'database_read')")
@@ -32,19 +43,43 @@ class AgentCapability(BaseModel):
 
 
 class AgentIdentity(BaseModel):
-    """Immutable identity record for an AI agent registered in AgentGuard."""
+    """Identity record for an AI agent registered in AgentGuard."""
     
     agent_id: str = Field(default_factory=lambda: generate_id("agt"), description="Unique agent identifier")
     name: str = Field(..., description="Human-readable agent name")
     framework: str = Field(default="custom", description="Framework name (e.g., 'langchain', 'autogen', 'crewai', 'custom')")
     version: str = Field(default="1.0.0", description="Agent implementation version")
-    capabilities: List[AgentCapability] = Field(
-        default_factory=list,
-        description="Declared capabilities of this agent"
+    status: AgentStatus = Field(
+        default=AgentStatus.ACTIVE,
+        description="Current lifecycle and security status of the agent"
     )
     trust_level: AgentTrustLevel = Field(
         default=AgentTrustLevel.MEDIUM,
         description="Assigned baseline trust level"
+    )
+    capabilities: List[AgentCapability] = Field(
+        default_factory=list,
+        description="Declared capabilities of this agent"
+    )
+    parent_agent_id: Optional[str] = Field(
+        default=None,
+        description="Parent orchestrator or delegating agent ID if hierarchical"
+    )
+    owner_context: Optional[str] = Field(
+        default=None,
+        description="Owning execution context or session identifier"
+    )
+    current_task: Optional[str] = Field(
+        default=None,
+        description="Active task description or task ID being executed"
+    )
+    created_at: Optional[str] = Field(
+        default=None,
+        description="Agent registration timestamp (ISO-8601 string)"
+    )
+    last_seen: Optional[str] = Field(
+        default=None,
+        description="Most recent activity timestamp (ISO-8601 string)"
     )
     metadata: Dict[str, Any] = Field(
         default_factory=dict,

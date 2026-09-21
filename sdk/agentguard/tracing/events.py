@@ -37,6 +37,8 @@ class EventType(str, Enum):
     RESPONSE_EXECUTED = "response.executed"
     DRIFT_DETECTED = "drift.detected"
     GATE_EVALUATED = "gate.evaluated"
+    CUSTOM_EVENT = "custom.event"
+    SECURITY_ALERT = "security.alert"
 
 
 

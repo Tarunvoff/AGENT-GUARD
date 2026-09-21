@@ -1,7 +1,7 @@
 """AgentGuard: Causal Security & Enforcement SDK for Multi-Agent AI Systems."""
 
 from agentguard.agents.agent import Agent
-from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentTrustLevel
+from agentguard.agents.identity import AgentCapability, AgentIdentity, AgentStatus, AgentTrustLevel
 from agentguard.client import AgentGuard
 from agentguard.config import AgentGuardConfig
 from agentguard.context.context import Context
@@ -192,6 +192,7 @@ __all__ = [
     "AgentIdentity",
     "AgentCapability",
     "AgentTrustLevel",
+    "AgentStatus",
     "Task",
     "TaskContext",
     "TaskStatus",

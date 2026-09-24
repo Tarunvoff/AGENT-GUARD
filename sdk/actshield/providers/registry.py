@@ -1,4 +1,4 @@
-﻿"""
+"""
 ActShield Provider Registry
 =============================
 Ordered failover chain of SecurityAIProviders.
@@ -32,10 +32,12 @@ class ProviderRegistry:
     def __init__(self) -> None:
         self._providers: List[SecurityAIProvider] = []
 
-    def register(self, provider: SecurityAIProvider, *, position: Optional[int] = None) -> None:
-        """Register a provider. Appends to end unless position specified."""
+    def register(self, provider: SecurityAIProvider, *, position: Optional[int] = None, is_default: bool = False) -> None:
+        """Register a provider. Appends to end unless position or is_default specified."""
         if position is not None:
             self._providers.insert(position, provider)
+        elif is_default:
+            self._providers.insert(0, provider)
         else:
             self._providers.append(provider)
         logger.debug("Registered provider: %s", provider.provider_name)

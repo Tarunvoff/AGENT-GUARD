@@ -182,11 +182,13 @@ class MCPGateway:
                 required_capabilities=tinfo["required_capabilities"],
             )
 
+        acting_agent = params.get("_agent_id") or params.get("agent_id")
         request = ToolRequest(
             request_id=f"req_mcp_{uuid.uuid4().hex[:8]}",
             tool_id=tool_def.tool_id,
             tool_name=tool_name,
             arguments=tool_args,
+            agent_id=acting_agent,
         )
 
         # Emit gateway interception event

@@ -14,6 +14,7 @@ from actshield.context.context import Context
 from actshield.context.provenance import ContextSource, Provenance
 from actshield.context.taint import TaintState
 from actshield.decisions.decision import SecurityDecision
+from actshield.delegation.authority import AuthorityGrant
 from actshield.delegation.delegation import Delegation, DelegationScope
 from actshield.integrations.ai_secura import (
     LocalAISecuraAdapter,
@@ -45,6 +46,7 @@ from actshield.tracing.correlation import (
 )
 from actshield.tracing.events import EventType, SecurityEvent
 from actshield.tracing.tracer import CausalGraph, TraceManager
+from actshield.posture.posture_models import SecurityPostureSnapshot
 from actshield.posture.posture_engine import PostureEngine
 from actshield.incidents.incident_engine import IncidentEngine
 from actshield.response.response_engine import ResponseEngine
@@ -65,6 +67,7 @@ class ActShield:
         self,
         config: Optional[ActShieldConfig] = None,
         mode: str = "strict",
+        enforcement_mode: Optional[str] = None,
         ai_provider: Optional[Union[SecurityAIProvider, str]] = None,
         ai_secura: Optional[SecurityReasoner] = None,
         apiris: Optional[APIIntelligence] = None,
@@ -72,7 +75,9 @@ class ActShield:
         storage: Optional[StorageBackend] = None,
     ) -> None:
         self.config = config or ActShieldConfig()
-        self.mode = mode
+        if enforcement_mode is not None:
+            self.config.enforcement_mode = enforcement_mode
+        self.mode = enforcement_mode or mode
         self.tracer = TraceManager()
         self.storage: StorageBackend = storage or SQLiteStorage(":memory:")
         self.approvals = ApprovalManager(self)
@@ -119,6 +124,23 @@ class ActShield:
         """Alias for policy_evaluator."""
         return self.policy_evaluator
 
+    def get_security_posture(
+        self,
+        events: Optional[List[Dict[str, Any]]] = None,
+        regressions: Optional[List[Dict[str, Any]]] = None,
+        incidents: Optional[List[Dict[str, Any]]] = None,
+        agents: Optional[List[Dict[str, Any]]] = None,
+        environment: str = "production",
+    ) -> SecurityPostureSnapshot:
+        """Derive and return the current Security Posture Snapshot."""
+        return self.posture.evaluate_current_posture(
+            events=events,
+            regressions=regressions,
+            incidents=incidents,
+            agents=agents,
+            environment=environment,
+        )
+
     def mcp_gateway(
         self,
         server_name: str = "upstream-mcp-server",
@@ -136,7 +158,7 @@ class ActShield:
 
     def register_agent(
         self,
-        name: str,
+        name: Union[str, AgentIdentity, Agent],
         framework: str = "custom",
         version: str = "1.0.0",
         capabilities: Optional[List[Union[str, AgentCapability, Dict[str, Any]]]] = None,
@@ -145,6 +167,20 @@ class ActShield:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Agent:
         """Register and return an Agent instance with full identity and capability specification."""
+        if isinstance(name, Agent):
+            agent_instance = name
+            agent_instance.guard = self
+            self.agent_registry[agent_instance.agent_id] = agent_instance
+            self.agent_registry[f"name:{agent_instance.name}"] = agent_instance
+            return agent_instance
+
+        if isinstance(name, AgentIdentity):
+            identity = name
+            agent_instance = Agent(identity=identity, guard=self)
+            self.agent_registry[agent_instance.agent_id] = agent_instance
+            self.agent_registry[f"name:{agent_instance.name}"] = agent_instance
+            return agent_instance
+
         if isinstance(trust_level, str):
             trust_level = AgentTrustLevel(trust_level.lower())
 
@@ -493,6 +529,69 @@ class ActShield:
             target_resources=target_resources,
             metadata=metadata,
         )
+
+    def protect(
+        self,
+        tool: Optional[str] = None,
+        name: Optional[str] = None,
+        description: str = "",
+        sensitivity: Union[str, SensitivityLevel] = SensitivityLevel.MEDIUM,
+        required_capabilities: Optional[List[str]] = None,
+        classification: str = "internal",
+        target_resources: Optional[List[Resource]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Decorator alias to wrap tool functions with deterministic security enforcement."""
+        eff_name = tool or name
+        if isinstance(sensitivity, str):
+            sensitivity = SensitivityLevel(sensitivity.upper())
+        return self.protected_tool(
+            name=eff_name,
+            description=description,
+            sensitivity=sensitivity,
+            required_capabilities=required_capabilities,
+            classification=classification,
+            target_resources=target_resources,
+            metadata=metadata,
+        )
+
+    def delegate(
+        self,
+        delegator_id: Union[str, Agent],
+        delegatee_id: Union[str, Agent],
+        granted_capabilities: Optional[List[str]] = None,
+        task_description: str = "",
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> Delegation:
+        """Create a registered delegation record between delegator and delegatee."""
+        del_id = delegator_id.agent_id if isinstance(delegator_id, Agent) else delegator_id
+        dlee_id = delegatee_id.agent_id if isinstance(delegatee_id, Agent) else delegatee_id
+
+        current_ctx = get_current_context()
+        trace_id = current_ctx.trace_id if current_ctx else generate_id("trc")
+        task_id = current_ctx.task_id if current_ctx else generate_id("tsk")
+        parent_del_id = current_ctx.delegation_id if current_ctx else None
+
+        grant = AuthorityGrant(
+            delegator_agent_id=del_id,
+            delegate_agent_id=dlee_id,
+            granted_capabilities=granted_capabilities or [],
+            constraints=constraints or {},
+        )
+
+        delegation = Delegation(
+            delegation_id=generate_id("dlg"),
+            task_id=task_id,
+            trace_id=trace_id,
+            parent_delegation_id=parent_del_id,
+            depth=0,
+            delegator_agent_id=del_id,
+            delegate_agent_id=dlee_id,
+            authority_grant=grant,
+            metadata={"task_description": task_description},
+        )
+        self.delegation_registry[delegation.delegation_id] = delegation
+        return delegation
 
     def span(
         self,

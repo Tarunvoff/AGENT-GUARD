@@ -41,6 +41,15 @@ from actshield.integrations.ai_secura import (
     SecurityContext,
     SecurityReasoner,
 )
+from actshield.providers.base import (
+    AnalysisResult,
+    HealthReport,
+    SecurityAIProvider,
+)
+from actshield.providers.registry import (
+    ProviderRegistry,
+    get_provider_registry,
+)
 from actshield.integrations.ai_secura_analysis import (
     AISecuraAnalysis,
     ThreatSeverity,
@@ -126,7 +135,7 @@ from actshield.tracing.correlation import (
 from actshield.tracing.events import EventType, SecurityEvent
 from actshield.tracing.tracer import CausalEdge, CausalGraph, CausalNode, TraceManager
 
-__version__ = "0.9.0"
+__version__ = "0.9.2"
 
 # Phase 6.5 — Forensic Intelligence + Product API
 from actshield.forensics.service import ForensicService
@@ -279,6 +288,11 @@ __all__ = [
     "SecurityReasoner",
     "SecurityContext",
     "SecurityAnalysis",
+    "SecurityAIProvider",
+    "AnalysisResult",
+    "HealthReport",
+    "ProviderRegistry",
+    "get_provider_registry",
     "AISecuraClient",
     "LocalAISecuraAdapter",
     "APIIntelligence",

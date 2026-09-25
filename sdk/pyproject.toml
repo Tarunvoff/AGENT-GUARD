@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "actshield"
-version = "0.9.2"
+version = "0.9.3"
 description = "Enterprise Security Control Plane SDK for Autonomous and Multi-Agent AI Systems"
 readme = "README.md"
 requires-python = ">=3.11"

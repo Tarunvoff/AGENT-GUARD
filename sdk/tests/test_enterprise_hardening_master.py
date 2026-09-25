@@ -92,7 +92,7 @@ class TestPackageParity:
         assert hasattr(agentguard, "AgentGuardConfig")
         assert hasattr(agentguard, "AgentIdentity")
         assert hasattr(agentguard, "ThreatAnalyzer")
-        assert agentguard.__version__ == "0.9.2"
+        assert agentguard.__version__ == "0.9.3"
 
     def test_client_instantiation(self):
         guard = AgentGuard(enforcement_mode="STRICT")

@@ -5,6 +5,12 @@ All notable changes to the **AgentGuard** (formerly ActShield) project will be d
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2026-09-25
+
+### Changed
+- Updated package metadata, maintainer details, portfolio, and LinkedIn profile.
+- Re-aligned GitHub repository links to `https://github.com/Tarunvoff/AGENT-GUARD`.
+
 ## [0.9.2] - 2026-09-25
 
 ### Added

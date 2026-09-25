@@ -135,7 +135,7 @@ from actshield.tracing.correlation import (
 from actshield.tracing.events import EventType, SecurityEvent
 from actshield.tracing.tracer import CausalEdge, CausalGraph, CausalNode, TraceManager
 
-__version__ = "0.9.2"
+__version__ = "0.9.3"
 
 # Phase 6.5 — Forensic Intelligence + Product API
 from actshield.forensics.service import ForensicService

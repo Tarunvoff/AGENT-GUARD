@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [
-    { name = "ActShield Security Team" }
+    { name = "Tarun V" }
+]
+maintainers = [
+    { name = "Tarun V" }
 ]
 keywords = [
     "ai-security",
@@ -86,11 +89,13 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/agentguard/agentguard"
-Documentation = "https://agentguard.dev/docs"
-Repository = "https://github.com/agentguard/agentguard"
-"Issue Tracker" = "https://github.com/agentguard/agentguard/issues"
-Changelog = "https://github.com/agentguard/agentguard/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Tarunvoff/AGENT-GUARD"
+Documentation = "https://github.com/Tarunvoff/AGENT-GUARD#readme"
+Repository = "https://github.com/Tarunvoff/AGENT-GUARD"
+"Issue Tracker" = "https://github.com/Tarunvoff/AGENT-GUARD/issues"
+Changelog = "https://github.com/Tarunvoff/AGENT-GUARD/blob/main/CHANGELOG.md"
+Portfolio = "https://tarun-portfolio-ai.vercel.app/"
+LinkedIn = "https://www.linkedin.com/in/tarun-v-sece"
 
 [project.scripts]
 agentguard = "actshield.cli.main:main"

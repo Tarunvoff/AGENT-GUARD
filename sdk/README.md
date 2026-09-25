@@ -4,8 +4,8 @@
 
 [![PyPI Version](https://img.shields.io/pypi/v/actshield.svg)](https://pypi.org/project/actshield/)
 [![Python Version](https://img.shields.io/pypi/pyversions/actshield.svg)](https://pypi.org/project/actshield/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/agentguard/agentguard/blob/main/LICENSE)
-[![Security Invariant](https://img.shields.io/badge/Security_Invariant-Deterministic_Enforcement-emerald.svg)](https://github.com/agentguard/agentguard)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/Tarunvoff/AGENT-GUARD/blob/main/LICENSE)
+[![Security Invariant](https://img.shields.io/badge/Security_Invariant-Deterministic_Enforcement-emerald.svg)](https://github.com/Tarunvoff/AGENT-GUARD)
 
 ---
 
@@ -274,6 +274,17 @@ actshield serve
 
 ---
 
-## 7. License
+## 7. Maintainer & Author
+
+**Tarun V**  
+*AI Security Engineer & System Architect*
+
+- 🌐 **Portfolio**: [tarun-portfolio-ai.vercel.app](https://tarun-portfolio-ai.vercel.app/)
+- 💼 **LinkedIn**: [linkedin.com/in/tarun-v-sece](https://www.linkedin.com/in/tarun-v-sece)
+- 🐙 **GitHub**: [@Tarunvoff](https://github.com/Tarunvoff)
+
+---
+
+## 8. License
 
 Apache-2.0. See [LICENSE](LICENSE) for details.
